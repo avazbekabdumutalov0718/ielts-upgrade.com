@@ -42,7 +42,11 @@
     const el = document.getElementById('cloudMessage');
     if (el) { el.textContent = value || ''; el.classList.toggle('ok', ok); }
   }
-  function oauthRedirect() { return 'https://ielts-upgradecom.vercel.app/'; }
+  function oauthRedirect() {
+    const ua = String(navigator.userAgent || '');
+    if (/VividIELTSApp\/\d+/i.test(ua)) return 'vividielts://auth-callback';
+    return `${location.origin}${location.pathname}`;
+  }
   function isOAuthReturn() { return /(?:\?|&)code=/.test(location.search) || /(?:^|[#&])access_token=/.test(location.hash); }
   function pendingKey() { return `va:${userId}:pending-cloud-v1`; }
   function pendingData() { try { return JSON.parse(localStorage.getItem(pendingKey())); } catch { return null; } }
