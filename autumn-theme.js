@@ -116,7 +116,8 @@
     var leaves=document.createElement('button');
     leaves.type='button';leaves.id='autumnLeavesBtn';
     wrap.appendChild(focus);wrap.appendChild(rain);wrap.appendChild(leaves);
-    document.body.appendChild(wrap);
+    var host=document.querySelector('.topbar .top-actions');
+    (host||document.body).appendChild(wrap);
     var focusOn=safeGet(FOCUS_KEY,false);
     var rainOn=safeGet(RAIN_KEY,true);
     var leavesOn=safeGet(LEAF_KEY,true);

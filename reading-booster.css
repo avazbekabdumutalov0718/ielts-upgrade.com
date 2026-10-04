@@ -65,3 +65,27 @@ body.rb-exam-mode{overflow:hidden}
 .rb-fs-btn{margin-left:auto;white-space:nowrap;min-height:42px;font-weight:700}.rb-fs-btn.rb-fs-off{border-color:#e08a2e;color:#9a5410;background:#fff6ea}
 .rb-exam-mode .rb-exam-bar{position:relative}
 .rb-exam-bar .rb-fs-btn+button{margin-left:0}
+
+/* V28 — Reading Training navigation: all six exercises are always reachable. */
+.rb-step-labels{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:-10px 0 20px;max-width:1120px}
+.rb-step-labels button{border:1px solid #dedbea;background:#fff;color:#5d6780;border-radius:10px;padding:8px 9px;min-height:42px;font-size:12px;font-weight:750;line-height:1.25;cursor:pointer}
+.rb-step-labels button:hover,.rb-step-labels button:focus-visible{border-color:#7564c5;outline:2px solid #c9c0ef}
+.rb-step-labels button.active{background:#5b47b5;color:#fff;border-color:#5b47b5}
+
+/* V28 — Real Exam uses the full Reading-Mock-style working area. */
+.rb-exam-mode .content-wrap{padding:8px 12px 12px}
+.rb-exam-screen .rb-exam-layout,
+.rb-exam-screen .rb-exam-layout.rb-wide{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.rb-exam-screen .rb-reading-paper,.rb-exam-screen .rb-question-paper{border-radius:10px;padding:24px 30px}
+.rb-exam-screen .rb-exam-bar{border-radius:10px;padding:10px 14px}
+.rb-exam-screen .page-heading{align-items:center}
+.rb-exam-screen .page-heading p{margin-top:1px}
+.rb-exam-screen .rb-tools{padding-inline:2px}
+.rb-exam-screen .rb-reading-paper h2,.rb-exam-screen .rb-question-paper h2{margin-top:0}
+
+/* Keep answer feedback comfortably above the page edge. */
+.rb-training .rb-result,.rb-training .rb-review{scroll-margin-top:110px}
+.rb-training .rb-end-actions{position:relative;z-index:1}
+
+@media(max-width:1050px){.rb-step-labels{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.rb-step-labels{grid-template-columns:1fr 1fr}.rb-step-labels button{font-size:11px}}

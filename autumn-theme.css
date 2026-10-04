@@ -246,3 +246,32 @@ body.autumn-leaves-off .nav-item.autumn-leaf-badge>span:first-child::after{displ
 body.autumn-rain-on .autumn-rain-drop{opacity:.76!important}
 body.autumn-rain-on #autumnWeather{background:linear-gradient(112deg,rgba(122,160,188,.018),rgba(77,122,165,.045));}
 body.autumn-evening.autumn-rain-on .autumn-rain-drop{background:linear-gradient(to bottom,transparent,rgba(155,197,226,.86))!important;box-shadow:0 0 3px rgba(162,205,235,.34)}
+
+/* V28 — controls live inside the top bar, never over exercise buttons/results. */
+.topbar #autumnControls{
+  position:static;
+  inset:auto;
+  z-index:auto;
+  display:flex;
+  flex:none;
+  gap:6px;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  backdrop-filter:none;
+}
+.topbar #autumnControls button{
+  min-height:38px;
+  padding:7px 9px;
+  background:rgba(255,255,255,.12);
+  color:#fff8ed;
+  border-color:rgba(255,255,255,.27);
+  box-shadow:none;
+}
+.topbar #autumnControls button:hover{background:rgba(255,255,255,.21);border-color:rgba(255,255,255,.42)}
+.topbar #autumnControls button[aria-pressed="true"]{background:rgba(255,255,255,.28);color:#fff;border-color:rgba(255,255,255,.45)}
+body.rb-exam-mode #autumnControls{display:none!important}
+@media(max-width:1180px){.topbar #autumnControls .autumn-control-text{display:none}.topbar #autumnControls button{width:38px;padding:7px}}
+@media(max-width:860px){.topbar #autumnControls{display:none}}

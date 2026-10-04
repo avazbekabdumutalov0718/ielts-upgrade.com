@@ -8,11 +8,29 @@
   const logout = document.getElementById('cloudLogout');
   const bucket = 'vocab-atlas-audio';
   const stateCategory = '_vocab_atlas_state_v1';
-  const entryKey = 'vivid:entry-seen-v14';
-  const client = window.supabase && config && window.supabase.createClient(config.url, config.key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-  });
+  const entryKey = 'vivid:entry-seen-v28';
+  let client = null, clientPromise = null;
   let userId = null, userEmail = '', mode = 'locked', stateTable = 'user_state', provider = null, queued = false, sending = false, timer = null;
+
+  async function ensureClient() {
+    if (client) return client;
+    if (clientPromise) return clientPromise;
+    clientPromise = (async () => {
+      if (!config?.url || !config?.key) throw new Error('Supabase sozlamalari topilmadi.');
+      if (!(window.supabase && typeof window.supabase.createClient === 'function')) {
+        try { await window.VividSupabaseLoader?.ready?.(); } catch {}
+      }
+      if (!(window.supabase && typeof window.supabase.createClient === 'function')) return null;
+      return window.supabase.createClient(config.url, config.key, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      });
+    })().catch(error => { console.warn('[VIVID IELTS] Cloud client init:', error?.message || error); return null; }).then(value => (client = value)).finally(() => { if (!client) clientPromise = null; });
+    return clientPromise;
+  }
+
+  function cloudLibraryMessage() {
+    return 'Cloud login kutubxonasi yuklanmadi. Internetni tekshirib, qayta urinib ko‘ring.';
+  }
 
   function statusText(text, error = false) {
     if (!status) return;
@@ -128,9 +146,11 @@
     const openAuth = async () => {
       try { sessionStorage.setItem(entryKey, '1'); } catch {}
       renderAuthOnly();
+      const activeClient = await ensureClient();
       wireAuth(onReady);
+      if (!activeClient) message(cloudLibraryMessage());
       try {
-        const { data } = await client?.auth.getSession?.() || { data: null };
+        const { data } = await activeClient?.auth.getSession?.() || { data: null };
         const email = data?.session?.user?.email || '';
         const input = document.getElementById('cloudEmail');
         if (input && email) input.value = email;
@@ -153,10 +173,11 @@
   }
 
   async function signInWithGoogle(button) {
-    if (!client) return;
+    const activeClient = await ensureClient();
+    if (!activeClient) { message(cloudLibraryMessage()); return; }
     if (button) button.disabled = true;
     message('');
-    const { error } = await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: oauthRedirect() } });
+    const { error } = await activeClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: oauthRedirect() } });
     if (error) {
       if (button) button.disabled = false;
       message(error.message || 'Google orqali kirishda xatolik.');
@@ -177,7 +198,8 @@
       try { await openSession(onReady); } catch { button.disabled = false; button.textContent = 'Continue'; }
     };
     document.getElementById('cloudOtherAccount').onclick = async () => {
-      await client.auth.signOut();
+      const activeClient = await ensureClient();
+      await activeClient?.auth.signOut();
       userId = null; userEmail = ''; mode = 'locked';
       box.hidden = true; box.innerHTML = '';
       if (emailInput) emailInput.value = '';
@@ -205,7 +227,9 @@
     document.getElementById('cloudForgot').onclick = async () => {
       const email = document.getElementById('cloudEmail').value.trim();
       if (!email) { message('Avval email manzilingizni kiriting.'); return; }
-      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: oauthRedirect() });
+      const activeClient = await ensureClient();
+      if (!activeClient) { message(cloudLibraryMessage()); return; }
+      const { error } = await activeClient.auth.resetPasswordForEmail(email, { redirectTo: oauthRedirect() });
       message(error ? (error.message || 'Yuborib bo‘lmadi.') : 'Emailingizga parolni tiklash havolasi yuborildi.', !error);
     };
     login.onsubmit = async event => {
@@ -213,8 +237,10 @@
       const submit = login.querySelector('.cloud-submit'); const old = submit.textContent;
       submit.disabled = true; submit.textContent = 'Opening…'; message('');
       try {
+        const activeClient = await ensureClient();
+        if (!activeClient) throw new Error(cloudLibraryMessage());
         const email = document.getElementById('cloudEmail').value.trim(), password = document.getElementById('cloudPassword').value;
-        const { error } = await client.auth.signInWithPassword({ email, password });
+        const { error } = await activeClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
         await openSession(onReady);
       } catch (error) { const raw=String(error?.message||''); const friendly=/invalid login credentials/i.test(raw)?'Email yoki parol mos kelmadi. Google bilan kiring yoki “Forgot password?” orqali parolni tiklang.':(raw||'Kirishda xatolik.'); message(friendly); submit.disabled = false; submit.textContent = old; }
@@ -224,8 +250,10 @@
       const submit = signup.querySelector('.cloud-submit'); const old = submit.textContent;
       submit.disabled = true; submit.textContent = 'Creating…'; message('');
       try {
+        const activeClient = await ensureClient();
+        if (!activeClient) throw new Error(cloudLibraryMessage());
         const fullName = document.getElementById('cloudName').value.trim(), email = document.getElementById('cloudSignupEmail').value.trim(), password = document.getElementById('cloudSignupPassword').value;
-        const { data, error } = await client.auth.signUp({ email, password, options: { data: { full_name: fullName, name: fullName } } });
+        const { data, error } = await activeClient.auth.signUp({ email, password, options: { data: { full_name: fullName, name: fullName } } });
         if (error) throw error;
         if (data.session) await openSession(onReady);
         else { message('Hisob yaratildi. Email tasdiqlash talab qilinsa, tasdiqlab keyin Log in qiling.', true); showTab('login'); submit.disabled = false; submit.textContent = old; }
@@ -234,18 +262,27 @@
   }
 
   async function showAuth(onReady) {
-    if (client && isOAuthReturn()) { await openSession(onReady); return; }
     let entered = false;
     try { entered = sessionStorage.getItem(entryKey) === '1'; } catch {}
+    // First visit: paint the normal VIVID IELTS landing page immediately. Cloud
+    // loading happens quietly in the background instead of blocking the UI.
+    if (!entered && !isOAuthReturn()) {
+      renderEntry(onReady);
+      ensureClient().catch(() => null);
+      return;
+    }
+    const activeClient = await ensureClient();
+    if (activeClient && isOAuthReturn()) { await openSession(onReady); return; }
     let session = null;
-    if (client) {
-      try { const result = await client.auth.getSession(); session = result?.data?.session || null; } catch {}
+    if (activeClient) {
+      try { const result = await activeClient.auth.getSession(); session = result?.data?.session || null; } catch {}
     }
     // In the same tab, a signed-in learner can refresh without seeing auth again.
     if (entered && session?.user) { await openSession(onReady); return; }
     if (!entered) { renderEntry(onReady); return; }
     renderAuthOnly();
     wireAuth(onReady);
+    if (!activeClient) message(cloudLibraryMessage());
     const email = session?.user?.email || '';
     const input = document.getElementById('cloudEmail');
     if (input && email) input.value = email;
@@ -298,7 +335,9 @@
     // Important: keep the login design on screen while account data loads silently.
     // The app becomes visible only when its local + cloud state is fully ready.
     try {
-      const { data: auth, error: authError } = await client.auth.getUser();
+      const activeClient = await ensureClient();
+      if (!activeClient) { renderAuthOnly(); wireAuth(onReady); message(cloudLibraryMessage()); return; }
+      const { data: auth, error: authError } = await activeClient.auth.getUser();
       if (!auth.user) {
         if (authError && authError.name !== 'AuthSessionMissingError') throw authError;
         await showAuth(onReady); return;
@@ -320,7 +359,23 @@
       if (saved.migrate && !pending && !await saveNow(data)) throw Error('Avvalgi lug‘at natijalarini ko‘chirib bo‘lmadi. Qayta urinib ko‘ring.');
       statusText('');
       await showPreparation(userId);
-    } catch (error) { showUnavailable(onReady, error.message || 'Hisob bilan ulanishni tekshiring.'); }
+    } catch (error) {
+      // V28: an account-state/network hiccup must not replace the whole entry/login
+      // experience with an error page. If authentication already succeeded, open the
+      // workspace with local progress and keep the cloud warning non-blocking.
+      console.warn('[VIVID IELTS] Cloud state fallback:', error?.message || error);
+      try {
+        mode = 'local';
+        await onReady({ mode: 'local', cloudError: String(error?.message || 'Cloud state unavailable') });
+        document.body.classList.remove('cloud-locked', 'vivid-entry-active', 'vivid-auth-active', 'prep-active');
+        gate.innerHTML = '';
+        statusText('Cloud vaqtincha ulanmagan · qurilmada davom etyapsiz', true);
+      } catch (localError) {
+        renderAuthOnly();
+        wireAuth(onReady);
+        message('Sayt ochilmadi. Internetni tekshirib qayta kiring.');
+      }
+    }
   }
 
   async function saveNow(data) {
@@ -368,7 +423,8 @@
     window.VocabPreparation.clear(userId || 'local');
     try { sessionStorage.removeItem(entryKey); } catch {}
     try { localStorage.removeItem('vivid-ielts-current-user'); } catch {}
-    await client?.auth.signOut(); location.reload();
+    const activeClient = await ensureClient();
+    await activeClient?.auth.signOut(); location.reload();
   };
   window.addEventListener('online', () => { if (queued) flush(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && queued) flush(); });
@@ -382,7 +438,8 @@
     key: key => mode === 'cloud' && userId ? `va:${userId}:${key}` : key,
     setProvider: fn => { provider = fn; },
     start: async onReady => {
-      if (!client) { showUnavailable(onReady, 'Cloud kutubxonasini yuklab bo‘lmadi. Internetni tekshiring.'); return; }
+      // Always show the normal VIVID IELTS entry/auth flow first. A temporary CDN
+      // problem must never replace the whole landing page with an error card.
       await showAuth(onReady);
     },
     chooseImport: () => choice('Eski natijalaringiz bor', 'Ushbu qurilmada oldin saqlangan lug‘at va Speaking natijalarini hisobingizga ko‘chirasizmi?', 'Ha, ko‘chirish', 'Yangi boshlash'),
