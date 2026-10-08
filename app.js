@@ -1515,49 +1515,58 @@ function gameBar(g){const title=g.kind==='pack'?g.label:games.find(x=>x[0]===g.m
 function mcqChoices(w,reverse=false){const g=state.game;if(!g.options||g.optionFor!==w.id||g.reverse!==reverse){const pool=g.kind==='pack'?(g.origin==='readingbooster'&&g.items.length<4?[...g.items,...shuffle(words).slice(0,80)]:g.items):gamePool(),used=new Set([norm(reverse?w.w:w.u)]),choices=[];for(const x of shuffle(pool)){const k=norm(reverse?x.w:x.u);if(x.id!==w.id&&!used.has(k)){choices.push(x);used.add(k)}if(choices.length===3)break}g.options=shuffle([w,...choices]);g.optionFor=w.id;g.reverse=reverse}return g.options.map((x,i)=>`<button class="choice" type="button" data-action="answer-choice" data-index="${i}">${esc(reverse?x.w:x.u)}</button>`).join('')}
 function practiceExampleFor(w,variant=0){
  const own=String(w.e||'').replace(/\s+/g,' ').trim();
- if(variant===0&&own.length>=12)return own;
- const topic=String(w.t||'everyday life').replace(/^Speaking\s*·\s*/i,'').replace(/^Writing\s*·\s*/i,'');
+ // Every vocabulary/collocation card has its own example. Games must use it instead of generic repeated frames.
+ if(own.length>=6)return own;
  const term=String(w.w||'').trim();
- const meaning=String(w.d||w.u||'the target meaning').replace(/\s+/g,' ').replace(/[.]+$/,'').trim();
- const frames=[
-  (t,m,p)=>`During a discussion about ${p}, “${t}” helped me express the idea of ${m} more precisely.`,
-  (t,m,p)=>`For a short IELTS answer on ${p}, I used “${t}” to refer clearly to ${m}.`,
-  (t,m,p)=>`In a classroom task connected with ${p}, “${t}” was the key expression for ${m}.`,
-  (t,m,p)=>`While reviewing ${p}, I chose “${t}” because it communicates ${m} accurately.`,
-  (t,m,p)=>`A realistic example about ${p} can use “${t}” when the intended meaning is ${m}.`,
-  (t,m,p)=>`In an exam-style sentence on ${p}, “${t}” gives a concise way to describe ${m}.`,
-  (t,m,p)=>`When the conversation turned to ${p}, “${t}” made the point about ${m} more specific.`,
-  (t,m,p)=>`For a different context involving ${p}, I practised “${t}” with the meaning ${m}.`,
-  (t,m,p)=>`In a timed vocabulary exercise on ${p}, “${t}” represented the idea of ${m}.`,
-  (t,m,p)=>`To add detail to an answer about ${p}, I used “${t}” for the idea of ${m}.`,
-  (t,m,p)=>`During independent practice on ${p}, “${t}” was useful for expressing ${m}.`,
-  (t,m,p)=>`A stronger sentence about ${p} can include “${t}” to communicate ${m}.`,
-  (t,m,p)=>`In a fresh example related to ${p}, “${t}” points directly to ${m}.`,
-  (t,m,p)=>`For an IELTS paragraph on ${p}, “${t}” can make the meaning ${m} more exact.`,
-  (t,m,p)=>`When giving supporting detail about ${p}, I used “${t}” to capture ${m}.`,
-  (t,m,p)=>`In a practical ${p} situation, “${t}” is a suitable expression for ${m}.`,
-  (t,m,p)=>`For a second-round practice sentence on ${p}, “${t}” was linked with ${m}.`,
-  (t,m,p)=>`A natural discussion of ${p} can include “${t}” when explaining ${m}.`,
-  (t,m,p)=>`To avoid vague wording in ${p}, I selected “${t}” to express ${m}.`,
-  (t,m,p)=>`In a focused exercise about ${p}, “${t}” gave me a precise way to mention ${m}.`,
-  (t,m,p)=>`For a speaking example on ${p}, “${t}” can be connected with the idea of ${m}.`,
-  (t,m,p)=>`In a written response about ${p}, “${t}” can signal the meaning ${m} clearly.`,
-  (t,m,p)=>`While building a new sentence around ${p}, I used “${t}” to show ${m}.`,
-  (t,m,p)=>`A useful practice context for ${p} places “${t}” beside the idea of ${m}.`,
-  (t,m,p)=>`In a detailed answer related to ${p}, “${t}” can explain ${m} without repetition.`,
-  (t,m,p)=>`For a separate example from ${p}, “${t}” provides the wording for ${m}.`,
-  (t,m,p)=>`During a quick review of ${p}, I matched “${t}” with the meaning ${m}.`,
-  (t,m,p)=>`In a new context about ${p}, “${t}” helps distinguish the idea of ${m}.`
- ];
- const seed=gameSeed(w,'context')%frames.length;
- const index=(seed+(Math.max(1,Number(variant)||1)*9))%frames.length;
- return frames[index](term,meaning.charAt(0).toLowerCase()+meaning.slice(1),topic.charAt(0).toLowerCase()+topic.slice(1));
+ const meaning=String(w.u||w.d||'the target idea').replace(/\s+/g,' ').trim();
+ const topic=String(w.t||'everyday English').replace(/^Speaking\s*·\s*/i,'').replace(/^Writing\s*·\s*/i,'').trim();
+ const seed=gameSeed(w,'fallback-example-'+variant);
+ const subjects=['A student','A teacher','A traveller','A researcher','A neighbour','A colleague','A parent','A volunteer','A shop owner','A team member','A local resident','A university applicant','A young professional','A commuter','A classmate','A project leader'];
+ const settings=['during a busy weekday','after an unexpected change','while preparing for an important task','during a conversation with friends','when making a difficult decision','while working on a group project','during a weekend activity','after receiving useful advice','while adapting to a new situation','during an ordinary day','when solving a practical problem','while discussing a real example','during a community event','while planning the next step','after comparing several options','when explaining a personal experience'];
+ const endings=['and the result was immediately noticeable','which made the situation easier to understand','before deciding what to do next','and this changed the final outcome','which helped everyone respond more clearly','so the idea became easier to remember','and the experience provided a useful lesson','which gave the discussion a more precise focus','before the group reached a final decision','and that detail became important later'];
+ const subject=subjects[seed%subjects.length],setting=settings[(seed>>>5)%settings.length],ending=endings[(seed>>>11)%endings.length];
+ return subject+' used “'+term+'” '+setting+' to express “'+meaning+'”, '+ending+'.';
 }
 function exampleFor(w){return practiceExampleFor(w,0)}
 function gameSeed(w,salt=''){return (String(w.id??w.w)+salt).split('').reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,11)}
 function naturalExampleFor(w,variant=0){return practiceExampleFor(w,variant)}
-function maskTermInSentence(sentence,term){const escaped=String(term||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const re=new RegExp(escaped,'i');if(re.test(sentence))return sentence.replace(re,'_____');const parts=String(term||'').trim().split(/\s+/);if(parts.length>1){const flexible=new RegExp(parts.map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s+'),'i');if(flexible.test(sentence))return sentence.replace(flexible,'_____')}return sentence+'  _____'}
-function gapText(w,variant=0){return maskTermInSentence(naturalExampleFor(w,variant),w.w)}
+function maskTermInSentence(sentence,term){
+ const escaped=String(term||'').replace(/[.*+?^$\{\}()|[\]\\]/g,'\\$&');
+ const re=new RegExp(escaped,'i');
+ if(re.test(sentence))return sentence.replace(re,'_____');
+ const parts=String(term||'').trim().split(/\s+/);
+ if(parts.length>1){
+  const flexible=new RegExp(parts.map(x=>x.replace(/[.*+?^$\{\}()|[\]\\]/g,'\\$&')).join('\\s+'),'i');
+  if(flexible.test(sentence))return sentence.replace(flexible,'_____');
+ }
+ return '';
+}
+function uniqueGapFallback(w,variant=0){
+ const term=String(w.w||'').trim(),meaning=String(w.u||w.d||'target meaning').replace(/\s+/g,' ').trim(),topic=String(w.t||'English').replace(/^Speaking\s*·\s*/i,'').replace(/^Writing\s*·\s*/i,'').trim();
+ const seed=gameSeed(w,'gap-fallback-'+variant);
+ const frames=[
+  (t,m,p)=>'In a '+p+' discussion, the expression “'+t+'” was used to communicate the idea “'+m+'”.',
+  (t,m,p)=>'During a '+p+' lesson, the phrase “'+t+'” appeared in a sentence about “'+m+'”.',
+  (t,m,p)=>'A learner chose “'+t+'” in a '+p+' example because it matched the meaning “'+m+'”.',
+  (t,m,p)=>'The '+p+' example used “'+t+'” to make the meaning “'+m+'” precise.',
+  (t,m,p)=>'While reviewing '+p+', the class used “'+t+'” for the idea “'+m+'”.',
+  (t,m,p)=>'In one '+p+' scenario, “'+t+'” was the clearest way to express “'+m+'”.',
+  (t,m,p)=>'The speaker included “'+t+'” in a '+p+' answer to convey “'+m+'”.',
+  (t,m,p)=>'For a practical '+p+' example, “'+t+'” represented the meaning “'+m+'”.',
+  (t,m,p)=>'A short '+p+' response used “'+t+'” when the intended idea was “'+m+'”.',
+  (t,m,p)=>'In a real '+p+' context, “'+t+'” helped express “'+m+'” accurately.',
+  (t,m,p)=>'The phrase “'+t+'” appeared in a '+p+' example that illustrated “'+m+'”.',
+  (t,m,p)=>'While practising '+p+', a learner used “'+t+'” to describe “'+m+'”.'
+ ];
+ return frames[seed%frames.length](term,meaning,topic);
+}
+function gapText(w,variant=0){
+ const own=naturalExampleFor(w,variant);
+ const masked=maskTermInSentence(own,w.w);
+ if(masked)return masked;
+ const fallback=uniqueGapFallback(w,variant);
+ return maskTermInSentence(fallback,w.w)||fallback;
+}
 function gameTypingPrompt(w){const seed=gameSeed(w,'typing')%4;if(seed===0)return {label:'O‘zbekcha ma’noga qarab inglizchasini yozing',text:w.u};if(seed===1&&w.d&& !/IELTS (Writing collocation|vocabulary)/i.test(w.d))return {label:'Ta’rifga mos so‘z yoki iborani yozing',text:w.d};if(seed===2){const first=String(w.w).split(/\s+/).map(x=>x.charAt(0).toUpperCase()+'…').join(' ');return {label:'Ma’no + harf yordamidan foydalanib yozing',text:`${w.u} · ${first}`}}return {label:'Gapdagi yashirilgan iborani yozing',text:gapText(w,14)}}
 function gameChoicePrompt(w,mode,index){const seed=(gameSeed(w,mode)+index)%4;if(seed===0)return {reverse:false,label:'Bu so‘z yoki iboraning o‘zbekcha ma’nosi qaysi?',text:w.w};if(seed===1)return {reverse:true,label:'Qaysi inglizcha so‘z yoki ibora mos keladi?',text:w.u};if(seed===2)return {reverse:false,label:'Bu gapda ishlatilgan iboraning ma’nosini toping',text:naturalExampleFor(w,18)};return {reverse:true,label:'Ma’noga mos inglizcha variantni tanlang',text:(w.d&&w.d.length>8&&!/IELTS (Writing collocation|vocabulary)/i.test(w.d))?w.d:w.u}}
 function renderGame(){const g=state.game;if(!g)return;if(g.mode==='rush'&&g.paused){root.innerHTML=heading('Word Rush','Barcha so‘zlar ketma-ket chiqadi. Har safar 60 soniyalik bosqichni davom ettiring.')+`<section class="game-stage">${gameBar(g)}<div class="sprint-pause"><strong>60 soniya tugadi</strong><p>${fmt(g.idx)} / ${fmt(g.items.length)} ta so‘z ko‘rildi. Keyingi bosqich aynan shu joydan davom etadi.</p><button type="button" class="primary-btn" data-action="resume-rush">Keyingi 60 soniya →</button></div></section>`;return}const w=g.items[g.idx];
