@@ -1,4 +1,4 @@
-const CACHE = 'vivid-ielts-v37-unique-game-contexts';
+const CACHE = 'vivid-ielts-v34-unique-game-sentences';
 const SHELL = ['/', '/index.html', '/auth.html', '/styles.css', '/grammar.css', '/tenses.css', '/tenses.js', '/grammar-content.json', '/listening-boost.css', '/listening-shadowing.css', '/listening-shadowing.js', '/listening-engine.js', '/listening-data.json', '/speed-listening-data.json', '/writing-boost.css', '/writing-engine.js', '/writing-data.json', '/v15-upgrade.css', '/v17-classic.css', '/v19-upgrade.css', '/journey100.css', '/journey100.js', '/autumn-theme.css', '/autumn-theme.js', '/imported-library.css', '/imported-library.js', '/cloud.css', '/preparation.css', '/preparation.js', '/app.js', '/unique-game-contexts.js', '/cloud.js', '/supabase-loader.js', '/supabase-config.js', '/pwa.js', '/manifest.webmanifest', '/vivid-ielts-promo-v19-poster.jpg', '/vivid-ielts-promo-v19.mp4'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).catch(() => null));
