@@ -1039,21 +1039,15 @@ function maxSpeakingGameChoices(entry,reverse){
  return `<div class="choices">${g.choices.map((e,i)=>`<button type="button" class="choice" data-action="max-speaking-choice" data-index="${i}">${esc(reverse?e.term:e.uz)}</button>`).join('')}</div>`;
 }
 function maxSpeakingPracticeSentence(e,topic,variant=0){
- const phrase=e.term,topicName=(topic?.title||e.topic||'everyday life').replace(/&/g,'and');
- const templates=[
-  `When I talk about ${topicName}, I often use “${phrase}” because it describes my experience clearly.`,
-  `A good example from my own life is when I had to ${phrase} in a real situation.`,
-  `In my opinion, people can ${phrase} when they face a practical challenge related to ${topicName}.`,
-  `For instance, I try to ${phrase} whenever I want to make steady progress in ${topicName}.`,
-  `One reason this matters to me is that I can ${phrase} without making the situation more complicated.`,
-  `From my experience, it is easier to ${phrase} when I have a clear goal and enough time to prepare.`,
-  `If I had to describe my approach to ${topicName}, I would say I usually try to ${phrase}.`,
-  `These days, many people choose to ${phrase} because it can make everyday life more manageable.`,
-  `I have noticed that I can ${phrase} much better when I stay calm and focus on one thing at a time.`,
-  `In the future, I would like to ${phrase} more often, especially in situations connected with ${topicName}.`
- ];
+ const own=Array.isArray(e.examples)?e.examples.map(x=>String(x||'').replace(/\s+/g,' ').trim()).filter(Boolean):[];
+ if(own.length)return own[Math.abs(Number(variant)||0)%own.length];
+ const phrase=String(e.term||'').trim(),topicName=(topic?.title||e.topic||'everyday life').replace(/&/g,'and');
  const seed=String(e.id||phrase).split('').reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,11);
- return templates[(seed+variant)%templates.length];
+ const people=['My classmate','A university student','One of my neighbours','A colleague','A close friend','A local resident','A young professional','A volunteer','A team leader','A family member','A traveller','A teacher'];
+ const moments=['after a difficult week','during a group project','while preparing for an exam','when plans changed unexpectedly','during a weekend activity','after receiving useful advice','while making an important decision','during a busy morning','when solving a practical problem','while discussing a personal goal','after comparing several options','during a community event'];
+ const results=['and it made the next step much clearer','which helped the situation improve','and the experience taught a useful lesson','before deciding how to continue','which changed the outcome in a positive way','and that choice saved both time and effort','which made the example easier to explain','and the result became noticeable quite quickly','before the group reached a final decision','which gave the story a clear conclusion'];
+ const person=people[seed%people.length],moment=moments[(seed>>>4)%moments.length],result=results[(seed>>>9)%results.length];
+ return person+' tried to '+phrase+' '+moment+' in a situation related to '+topicName+', '+result+'.';
 }
 function maxSpeakingGameBody(){
  const g=maxSpeakingGame,e=g.items[g.idx],mode=g.mode,reverse=mode==='mcq'&&g.idx%2===1;
