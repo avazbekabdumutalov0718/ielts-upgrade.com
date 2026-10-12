@@ -63,8 +63,8 @@ function stepper(){return '<div class="ar-steps">'+stageNames.map((n,i)=>'<butto
 function gateMarkup(){
  const basket=rec().cart||[];
  if(!basket.length)return '<p class="ar-warning">Select at least one word in Step 3 before the four practice games.</p>';
- const list=['Match English to Uzbek','Choose the right translation','Type the English phrase','Complete a sample sentence'];
- return '<section class="ar-gate"><h3>Four practice games before Step 4</h3><p>Finish all four games and their checks using the words in your own basket.</p><div class="ar-gate-list">'+list.map((s,i)=>'<button data-gate="'+i+'" '+(i>gateScores.length?'disabled':'')+'>'+(i<gateScores.length?'✓ ':'')+(i+1)+'. '+s+'</button>').join('')+'</div><div id="ar-gate-play"></div>'+(gateScores.length===4?'<button class="ar-primary" id="ar-unlock">Continue to Step 4 →</button>':'')+'</section>';
+ const list=['Match English to Uzbek','Choose the right translation','Type the English phrase','Complete a sample sentence','Final word-basket quiz'];
+ return '<section class="ar-gate"><h3>Four practice games + vocabulary quiz before Step 4</h3><p>Finish four different games and a final vocabulary quiz using the words in your own basket.</p><div class="ar-gate-list">'+list.map((s,i)=>'<button data-gate="'+i+'" '+(i>gateScores.length?'disabled':'')+'>'+(i<gateScores.length?'✓ ':'')+(i+1)+'. '+s+'</button>').join('')+'</div><div id="ar-gate-play"></div>'+(gateScores.length===5||rec().gateDone?'<button class="ar-primary" id="ar-unlock">Continue to Step 4 →</button>':'')+'</section>';
 }
 function collocMarkup(){
  let words=active.collocations||[];
@@ -87,7 +87,7 @@ function renderArticle(){
  (stage===5?speedMarkup():'')+readingMarkup()+
  (stage===3?gateMarkup():'')+(stage===2?'<div id="ar-marker" hidden aria-hidden="true">🖍️</div>':'')+(stage>=4?cartMarkup():'')+
  (stage===5?'<section class="ar-summary"><h2>Write your own summary</h2><p>Explain the main idea, evidence and conclusion in English.</p><textarea id="ar-summary" rows="7" placeholder="The article explores...">'+E(r.summary||'')+'</textarea><span id="ar-summary-count">'+wordsOf(r.summary||'').length+' words</span></section>'+collocMarkup()+gamesMarkup()+questionMarkup():'')+
- '<div class="ar-stage-controls"><button id="ar-previous" '+(stage===1?'disabled':'')+'>← Previous stage</button><button id="ar-next" class="ar-primary" '+(stage===3&&gateScores.length<4?'disabled':'')+(stage===5?' hidden':'')+'>Next stage →</button></div></section>';
+ '<div class="ar-stage-controls"><button id="ar-previous" '+(stage===1?'disabled':'')+'>← Previous stage</button><button id="ar-next" class="ar-primary" '+(stage===3&&!rec().gateDone?'disabled':'')+(stage===5?' hidden':'')+'>Next stage →</button></div></section>';
 }
 function closeTip(){if(tip){tip.remove();tip=null}}
 function showTip(el,w,translationValue,collocation=false){
@@ -124,23 +124,50 @@ async function hydrateCollocations(){
 function setStage(next){
  if(next<1||next>5)return;
  if(next>Math.max(stage,rec().stage||1))return;
- if(stage===3&&next===4&&gateScores.length<4){notify('Finish the four basket games first.');return}
+ if(stage===3&&next===4&&!rec().gateDone){notify('Finish the four basket games and vocabulary quiz first.');return}
  closeTip();stage=next;block=0;running=false;clearInterval(ticker);stopwatch=0;rec().stage=Math.max(rec().stage||1,next);persist();ensureHost();host()?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function startArticle(id){
- active=db.find(a=>a.id===id)||null;if(!active)return;stage=rec().stage||1;block=0;chosenAnswers={};gateScores=[];gateIndex=-1;stopwatch=0;running=false;clearInterval(ticker);history.replaceState(null,'','#articles/'+encodeURIComponent(id));ensureHost();host()?.scrollIntoView({block:'start'});
+ active=db.find(a=>a.id===id)||null;if(!active)return;stage=rec().stage||1;block=0;chosenAnswers={};gateScores=[...(rec().gateScores||[])];gateIndex=-1;stopwatch=0;running=false;clearInterval(ticker);history.replaceState(null,'','#articles/'+encodeURIComponent(id));ensureHost();host()?.scrollIntoView({block:'start'});
 }
 function gameWords(){let c=[...(rec().cart||[]),...(active?.collocations||[])];return c.filter(x=>x.w).map(x=>({w:x.w,u:x.u||localText(x.w)||'',e:x.e||''}))}
 function gateRound(i){
  const bag=rec().cart||[];if(!bag.length)return;
+ if(i===4){return finalBasketQuiz(bag)}
  gateIndex=i;let word=bag[i%bag.length],other=bag.filter(x=>x.w!==word.w);
  let box=qs('#ar-gate-play');if(!box)return;
  const opts=[word,...other.slice(0,3)];if(opts.length===1)opts.push({w:'not this word',u:'boshqa so‘z'});opts.sort((a,b)=>a.w.localeCompare(b.w));
  if(i===0||i===1)box.innerHTML='<div class="ar-round"><h4>'+(i===0?'Match the correct Uzbek meaning':'Choose the English collocation')+'</h4><p><strong>'+E(i===0?word.w:word.u)+'</strong></p>'+opts.map((o,j)=>'<button data-choice="'+j+'">'+E(i===0?o.u:o.w)+'</button>').join('')+'<div class="ar-round-status"></div></div>';
  else box.innerHTML='<div class="ar-round"><h4>'+(i===2?'Type the original English term':'Fill the collocation')+'</h4><p>'+E(i===2?word.u:(word.e||('This article contains '+word.w)).replace(word.w,'_____'))+'</p><input id="ar-round-input" placeholder="Type the English term"><button id="ar-round-check">Check</button><div class="ar-round-status"></div></div>';
- const finish=()=>{if(!gateScores.includes(i)){gateScores.push(i);persist()}let done=qs('.ar-round-status',box);if(done)done.textContent='✓ Correct. Open the next game.';qsa('[data-gate]').forEach((b,k)=>{b.disabled=k>gateScores.length;if(k<gateScores.length)b.textContent='✓ '+b.textContent.replace(/^✓ /,'')});if(gateScores.length===4){const section=qs('.ar-gate');section.outerHTML=gateMarkup();wireGate()}};
+ const finish=()=>{if(!gateScores.includes(i)){gateScores.push(i);rec().gateScores=[...gateScores];persist()}let done=qs('.ar-round-status',box);if(done)done.textContent='✓ Correct. Open the next game.';qsa('[data-gate]').forEach((b,k)=>{b.disabled=k>gateScores.length;if(k<gateScores.length)b.textContent='✓ '+b.textContent.replace(/^✓ /,'')});if(gateScores.length===5){rec().gateDone=true;persist();const section=qs('.ar-gate');section.outerHTML=gateMarkup();wireGate()}};
  qsa('[data-choice]',box).forEach(b=>b.onclick=()=>{let selected=opts[Number(b.dataset.choice)];if(selected?.w===word.w)finish();else qs('.ar-round-status',box).textContent='Try again'});
  qs('#ar-round-check',box)?.addEventListener('click',()=>{let answer=norm(qs('#ar-round-input',box)?.value);if(answer===norm(word.w))finish();else qs('.ar-round-status',box).textContent='Try again · Hint: '+word.w.slice(0,1)+'…'});
+}
+
+function finalBasketQuiz(bag){
+ const box=qs('#ar-gate-play');if(!box)return;
+ const pool=bag.filter(x=>x.w&&x.u);if(!pool.length)return;
+ const count=Math.min(10,pool.length);let idx=0,score=0;const rows=pool.slice(0,count);
+ function next(){
+  if(idx===count){
+   const pass=score/count>=0.6;
+   box.innerHTML='<div class="ar-round"><h4>Word basket quiz</h4><p>'+score+' / '+count+' correct</p><p>'+(pass?'✓ Passed. Step 4 is unlocked.':'Score at least 60% to continue.')+'</p><button id="ar-requiz">Try quiz again</button></div>';
+   qs('#ar-requiz',box).onclick=()=>finalBasketQuiz(bag);
+   if(pass&&!gateScores.includes(4)){gateScores.push(4);rec().gateScores=[...gateScores];rec().gateDone=true;persist();let section=qs('.ar-gate');let html=box.innerHTML;section.outerHTML=gateMarkup();wireGate();qs('#ar-gate-play').innerHTML=html}
+   return;
+  }
+  const row=rows[idx], reverse=idx%2===1,options=[row,...pool.filter(x=>x.w!==row.w).slice(0,3)];
+  if(options.length===1)options.push({w:'Other word',u:'Boshqa tarjima'});
+  options.sort((a,b)=>String(a.w).localeCompare(String(b.w)));
+  box.innerHTML='<div class="ar-round"><h4>Quiz '+(idx+1)+' / '+count+'</h4><p>'+E(reverse?row.u:row.w)+'</p>'+options.map((x,j)=>'<button data-quiz-option="'+j+'">'+E(reverse?x.w:x.u)+'</button>').join('')+'<div class="ar-round-status"></div><button id="ar-quiz-next" hidden>Next →</button></div>';
+  qsa('[data-quiz-option]',box).forEach(btn=>btn.onclick=()=>{
+   const yes=options[Number(btn.dataset.quizOption)]?.w===row.w;if(yes)score++;
+   qs('.ar-round-status',box).textContent=yes?'✓ Correct':'Correct: '+row.w+' — '+row.u;
+   qsa('[data-quiz-option]',box).forEach(x=>x.disabled=true);qs('#ar-quiz-next',box).hidden=false
+  });
+  qs('#ar-quiz-next',box).onclick=()=>{idx++;next()};
+ }
+ next();
 }
 function wireGate(){qsa('[data-gate]').forEach(b=>b.onclick=()=>gateRound(Number(b.dataset.gate)));qs('#ar-unlock')?.addEventListener('click',()=>setStage(4))}
 function openGame(mode){
@@ -169,7 +196,7 @@ function wireArticle(){
  qs('#ar-back')?.addEventListener('click',()=>{active=null;closeTip();running=false;clearInterval(ticker);history.replaceState(null,'','#articles');ensureHost()});
  qsa('[data-stage]').forEach(b=>b.onclick=()=>setStage(Number(b.dataset.stage)));
  qs('#ar-previous')?.addEventListener('click',()=>setStage(stage-1));
- qs('#ar-next')?.addEventListener('click',()=>{if(stage!==3||gateScores.length===4)setStage(stage+1)});
+ qs('#ar-next')?.addEventListener('click',()=>{if(stage!==3||rec().gateDone)setStage(stage+1)});
  qsa('[data-page]').forEach(b=>b.onclick=()=>{block+=Number(b.dataset.page);ensureHost()});
  if(stage===2){
   const area=qs('#ar-original');area?.addEventListener('mousemove',event=>{mouse={x:event.clientX,y:event.clientY};const marker=qs('#ar-marker');if(marker){marker.style.left=(event.clientX+13)+'px';marker.style.top=(event.clientY+13)+'px';marker.hidden=false}if(tip)positionTip(event.target)});
