@@ -107,3 +107,8 @@
 @media(max-width:1050px){.ar-grid,.ar-colloc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ar-game-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:750px){.ar-header{padding:23px;flex-wrap:wrap}.ar-counter{display:flex;gap:9px}.ar-counter b{font-size:22px}.ar-grid,.ar-colloc-grid,.ar-carts,.ar-gate-list,.ar-game-grid{grid-template-columns:1fr 1fr}.ar-reading{padding:22px 19px;font-size:17px}.ar-steps{gap:4px}.ar-steps button{font-size:10px;flex-direction:column;padding:9px 3px}.ar-steps button b{width:21px;height:21px}.ar-stage-info{padding:17px}}
 @media(max-width:450px){.ar-grid,.ar-colloc-grid,.ar-carts,.ar-gate-list{grid-template-columns:1fr}.ar-game-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ar-shell{margin-bottom:40px}.ar-header h1{font-size:32px}.ar-article{min-height:125px}.ar-reading{padding:20px 13px;font-size:16px;line-height:1.85}}
+
+/* The movable highlighter cursor exists only while reading Stage 2. */
+#ar-marker{position:fixed;z-index:9000;pointer-events:none;font-size:23px;line-height:1;transform:rotate(-12deg);filter:drop-shadow(0 3px 5px #5a3c7933)}
+#ar-marker[hidden]{display:none}
+.ar-colloc-meaning{display:block;color:#8757b0;font-size:12px;font-weight:750;line-height:1.5;margin-top:5px}
