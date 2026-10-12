@@ -24,8 +24,8 @@ const ARTICLE_CORE_TRANSLATIONS={"the":"aniq artikl","a":"bir; noaniq artikl","a
 async function translate(w){return localText(w)||ARTICLE_CORE_TRANSLATIONS[norm(w)]||''}
 function cleanContent(rows){return Array.isArray(rows)?rows.filter(x=>x&&typeof x==='object'&&Array.isArray(x.body)).map(x=>({...x,title:String(x.title||'Untitled'),kind:x.kind==='magazine'?'magazine':'article',level:levels.includes(x.level)?x.level:'B2'})):[]}
 async function initData(){
- try{const r=await fetch('articles-glossary.json?v=1');if(r.ok)glossary=(await r.json()).translations||{}}catch{}
- try{const r=await fetch('articles-data.json?v=1');if(r.ok){db=cleanContent((await r.json()).articles);if(db.length)return}}catch{}
+ try{const r=await fetch('articles-glossary.json?v=20261012-v5');if(r.ok)glossary=(await r.json()).translations||{}}catch{}
+ try{const r=await fetch('articles-data.json?v=20261012-v5');if(r.ok){db=cleanContent((await r.json()).articles);if(db.length)return}}catch{}
  // User can locally import the prepared article data while the GitHub upload is pending.
  try{const raw=localStorage.getItem(CACHE);if(raw)db=cleanContent(JSON.parse(raw).articles)}catch{}
 }
@@ -69,7 +69,7 @@ function gateMarkup(){
 }
 function collocMarkup(){
  let words=active.collocations||[];
- return '<section class="ar-collocations"><h2>Speaking & Writing · '+words.length+' expressions</h2><p>Expressions extracted from the actual article text. Click one to check its meaning or add it to your study basket.</p><div class="ar-colloc-grid">'+words.map((c,i)=>'<button data-colloc="'+i+'"><b>'+E(c.w)+'</b><span class="ar-colloc-meaning" data-colloc-meaning="'+i+'">'+E(c.u||localText(c.w)||'Tarjima yuklanmoqda…')+'</span><small>Example from article: '+E((c.e||'').slice(0,145))+'</small></button>').join('')+'</div><button data-game="5" class="ar-outline">Practise collocation quiz →</button></section>';
+ return '<section class="ar-collocations"><h2>Speaking & Writing · '+words.length+' expressions</h2><p>Expressions extracted from the actual article text. Click one to check its meaning or add it to your study basket.</p><div class="ar-colloc-grid">'+words.map((c,i)=>'<button data-colloc="'+i+'"><b>'+E(c.w)+'</b><span class="ar-colloc-meaning" data-colloc-meaning="'+i+'">'+E(c.u||localText(c.w)||'Tekshirilgan tarjima mavjud emas')+'</span><small>Example from article: '+E((c.e||'').slice(0,145))+'</small></button>').join('')+'</div><button data-game="5" class="ar-outline">Practise collocation quiz →</button></section>';
 }
 function gamesMarkup(){
  const n=(rec().cart?.length||0)+(active.collocations?.length||0);
@@ -85,6 +85,7 @@ function questionMarkup(){
 function renderArticle(){
  let r=rec();return '<section class="ar-shell ar-study"><button id="ar-back" class="ar-back">← All articles</button><div class="ar-studytitle">'+formatLevel(active.level)+' <small>'+(active.kind==='magazine'?'NEW SCIENTIST MAGAZINE':'ARTICLE')+' · '+E(active.pages||1)+' pages</small><h1>'+sanitizeTitle(active.title)+'</h1></div>'+stepper()+
  '<div class="ar-stage-info"><h2>Step '+stage+' / 5 · '+stageNames[stage-1]+'</h2><p>'+stageText()+'</p></div>'+
+ (active.sourceQuality?'<p class="ar-warning">Eslatma: ushbu manbaning ayrim sahifalari skanerlangan yoki PDF ustunlari aralash ajratilgan. Matn va testlar asl PDF bilan qo‘shimcha tekshirilmoqda.</p>':'')+
  (stage===5?speedMarkup():'')+readingMarkup()+
  (stage===3?gateMarkup():'')+(stage===2?'<div id="ar-marker" hidden aria-hidden="true">🖍️</div>':'')+(stage>=4?cartMarkup():'')+
  (stage===5?'<section class="ar-summary"><h2>Write your own summary</h2><p>Explain the main idea, evidence and conclusion in English.</p><textarea id="ar-summary" rows="7" placeholder="The article explores...">'+E(r.summary||'')+'</textarea><span id="ar-summary-count">'+wordsOf(r.summary||'').length+' words</span></section>'+collocMarkup()+gamesMarkup()+questionMarkup():'')+
@@ -92,15 +93,23 @@ function renderArticle(){
 }
 function closeTip(){if(tip){tip.remove();tip=null}}
 function showTip(el,w,translationValue,collocation=false){
- closeTip();tip=document.createElement('aside');tip.className='ar-tooltip';tip.innerHTML='<strong>'+E(w)+'</strong><p>'+E(translationValue||'Tekshirilgan tarjima kiritilmagan')+'</p><button class="ar-primary" id="ar-add-word">🧺 Add to basket</button>'+(!translationValue?'<input id="ar-own-translation" placeholder="Enter Uzbek translation">':'');
+ closeTip();const ok=Boolean(String(translationValue||'').trim());
+ tip=document.createElement('aside');tip.className='ar-tooltip';
+ tip.innerHTML='<strong>'+E(w)+'</strong><p>'+E(ok?translationValue:'Bu so‘zning o‘zbekcha tarjimasi hali tekshirilmagan.')+'</p>'+
+ (ok?'<button class="ar-primary" id="ar-add-word">🧺 Savatga qo‘shish</button>':'<small>Tarjima tayyor bo‘lgach, bu so‘zni savatga qo‘shish mumkin.</small>');
  document.body.appendChild(tip);positionTip(el);
+ if(!ok)return;
  qs('#ar-add-word',tip)?.addEventListener('click',()=>{
- const provided=qs('#ar-own-translation',tip)?.value.trim();
- const value=translationValue||provided;
- if(!value){notify('Please enter a translation or try again later.');return}
- const bag=rec().cart||(rec().cart=[]);if(!bag.some(c=>norm(c.w)===norm(w))){bag.push({w,u:value,e:collocation?el.dataset.example||'':el.closest('.ar-paragraph')?.textContent?.slice(0,270)||''});persist();notify(w+' added to your basket')}else notify('Already in the basket');
- if(stage>=4)ensureHost();else if(stage===3){const g=qs('.ar-gate');if(g)g.outerHTML=gateMarkup();wireGate()}
- closeTip();
+  const bag=rec().cart||(rec().cart=[]);
+  if(!bag.some(c=>norm(c.w)===norm(w))){
+    bag.push({w,u:translationValue,e:collocation?el.dataset.example||'':el.closest('.ar-paragraph')?.textContent?.slice(0,270)||''});
+    // When the learner adds new words, previous test results no longer
+    // cover the full basket and should not silently unlock the next stage.
+    rec().gateDone=false;rec().gateScores=[];gateScores=[];
+    persist();notify(w+' savatga qo‘shildi');
+  }else notify('Bu so‘z savatda mavjud');
+  if(stage>=4)ensureHost();else if(stage===3){const g=qs('.ar-gate');if(g)g.outerHTML=gateMarkup();wireGate()}
+  closeTip();
  });
 }
 function positionTip(el){if(!tip)return;let x=mouse.x||el?.getBoundingClientRect().left||0,y=mouse.y||el?.getBoundingClientRect().bottom||0;x=Math.max(10,Math.min(window.innerWidth-295,x+10));y=Math.max(10,Math.min(window.innerHeight-175,y+14));tip.style.left=x+'px';tip.style.top=y+'px'}
@@ -168,6 +177,7 @@ function openGame(mode) {
   if (!Number.isInteger(mode) || mode < 0 || mode > 6) return;
   if (activeGame?.timer) clearInterval(activeGame.timer);
   const dest=qs('#ar-game-play');if(!dest)return;
+  qs('#ar-rush-time')?.remove();
   const seen=new Set();
   const pool=gameWords().filter(w=>{const key=norm(w.w);if(!key||!w.u||seen.has(key))return false;seen.add(key);return true});
   if (!pool.length){dest.innerHTML='<p>O‘zbekcha tarjimasi tasdiqlangan so‘z yoki collocation hali yo‘q.</p>';return}
@@ -177,6 +187,7 @@ function openGame(mode) {
   activeGame={mode,timer:null};
   const renderResult=()=>{
     finished=true;if(activeGame?.timer)clearInterval(activeGame.timer);
+    qs('#ar-rush-time')?.remove();
     const state=rec();state.games=state.games||{};const previous=state.games[mode]||{};
     state.games[mode]={attempts:(previous.attempts||0)+1,best:Math.max(previous.best||0,score),total:order.length};persist();
     dest.innerHTML='<div class="ar-round"><h3>'+E(gameTitles[mode])+' · Natija</h3><p>'+score+' / '+order.length+' to‘g‘ri javob</p><button id="ar-replay" class="ar-primary">↻ Qayta o‘ynash</button></div>';
@@ -293,7 +304,9 @@ function wireArticle(){
    const q=active.questions||{}, tf=q.tf||[],mc=q.mcq||[];let total=tf.length+mc.length,correct=0,lines=[];
    tf.forEach((x,i)=>{const v=chosenAnswers['tf'+i];const ok=v!==undefined&&String(x.answer)===v;if(ok)correct++;lines.push((ok?'✓ ':'✗ ')+(i+1)+': '+(x.answer?'True':'False')+' · Evidence: '+E(x.evidence||''))});
    mc.forEach((x,i)=>{const v=chosenAnswers['mc'+i];const ok=v!==undefined&&String(x.answer)===v;if(ok)correct++;lines.push((ok?'✓ ':'✗ ')+(i+6)+': '+E(x.options?.[x.answer]||'')+' · Evidence: '+E(x.evidence||''))});
-   if(total){rec().complete=true;rec().score=correct;persist()}
+   const submitted=tf.filter((x,i)=>chosenAnswers['tf'+i]!==undefined).length+mc.filter((x,i)=>chosenAnswers['mc'+i]!==undefined).length;
+   if(total===10&&submitted===10){rec().complete=true;rec().score=correct;persist()}
+   else if(submitted<total){qs('#ar-score').textContent='Avval barcha '+total+' ta savolga javob bering. Hozir '+submitted+' tasi belgilangan.';return}
    qs('#ar-score').innerHTML='<h3>'+correct+' / '+total+' correct</h3><details><summary>Review answers and source evidence</summary>'+lines.map(l=>'<p>'+l+'</p>').join('')+'</details>';
   });
  }
