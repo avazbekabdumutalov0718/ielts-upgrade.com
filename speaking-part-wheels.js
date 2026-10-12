@@ -11,8 +11,16 @@
     const topicsFor = part => (getBank()?.['part' + part] || [])
       .map((group, index) => ({index, title: group.title, count: group.questions?.length || 0}));
     function getWheel(part) {
-      if (!wheels.has(part)) wheels.set(part, {pool: topicsFor(part), rotation: 0, selected: null, spin: null, frame: null, zoom: 1});
-      return wheels.get(part);
+      const topics = topicsFor(part);
+      if (!wheels.has(part)) wheels.set(part, {pool: topics, rotation: 0, selected: null, seen: new Set(), spin: null, frame: null, zoom: 1});
+      const state = wheels.get(part);
+      // Data arrives asynchronously: don't freeze an empty first-render wheel.
+      if (state.pool.length !== topics.length || topics.some((topic, i) => state.pool[i]?.title !== topic.title)) {
+        state.pool = topics;
+        state.selected = topics.find(topic => topic.index === state.selected?.index) || null;
+        state.seen = new Set([...state.seen].filter(index => topics.some(topic => topic.index === index)));
+      }
+      return state;
     }
     function cardFor(part) { return host?.querySelector('[data-speaking-wheel="' + part + '"]'); }
     function angle(wheel) {
@@ -45,7 +53,7 @@
         '<button type="button" class="spw-spin" aria-label="Part ' + part + ' barabanini aylantirish"' + (wheel.spin || !topics.length ? ' disabled' : '') + '>' + (wheel.spin ? 'Aylanyapti…' : selected ? '↻ Yana aylantirish' : '↻ Aylantirish') + '</button>' +
         '<div class="spw-result" role="status" aria-live="polite" aria-atomic="true"><small>' + (wheel.spin ? 'MAVZU TANLANMOQDA' : selected ? 'TANLANGAN MAVZU' : 'TAYYORMISIZ?') + '</small><strong>' + escape(wheel.spin ? 'Baraban aylanyapti…' : selected?.title || 'Barabanni aylantiring') + '</strong></div>' +
         '<button type="button" class="spw-open"' + (!selected || wheel.spin ? ' hidden' : '') + '>Mavzu savollarini ochish →</button>' +
-        '<details class="spw-catalog" open><summary>Barabandagi barcha ' + topics.length + ' ta mavzu</summary><ol>' + topics.map(topic => '<li data-wheel-topic="' + topic.index + '"' + (selected?.index === topic.index ? ' class="is-selected"' : '') + '><span>' + escape(topic.title) + '</span><small>' + topic.count + ' ta savol</small></li>').join('') + '</ol></details></div></div><div class="spw-study"' + (!selected || wheel.spin ? ' hidden' : '') + '>' + (selected && !wheel.spin ? renderCollection(part, selected.index) : '') + '</div></article></section>';
+        '<details class="spw-catalog" open><summary>Barabandagi barcha ' + topics.length + ' ta mavzu</summary><ol>' + topics.map(topic => '<li data-wheel-topic="' + topic.index + '" role="button" tabindex="0" aria-label="' + escape(topic.title) + ' mavzusini tanlash"' + (selected?.index === topic.index ? ' class="is-selected"' : '') + '><span>' + escape(topic.title) + '</span><small>' + topic.count + ' ta savol</small></li>').join('') + '</ol></details></div></div><div class="spw-study"' + (!selected || wheel.spin ? ' hidden' : '') + '>' + (selected && !wheel.spin ? renderCollection(part, selected.index) : '') + '</div></article></section>';
     }
     function update(part) {
       const card = cardFor(part), wheel = getWheel(part);
@@ -81,7 +89,12 @@
       if (!PARTS.includes(part)) return;
       const wheel = getWheel(part);
       if (wheel.spin || !wheel.pool.length) return;
-      const winner = Math.floor(Math.random() * wheel.pool.length), target = wheel.pool[winner];
+      // Explore every topic before the random wheel starts repeating topics.
+      if (wheel.seen.size >= wheel.pool.length) wheel.seen.clear();
+      const remaining = wheel.pool.filter(item => !wheel.seen.has(item.index));
+      const target = remaining[Math.floor(Math.random() * remaining.length)];
+      const winner = target.index;
+      wheel.seen.add(target.index);
       const step = 360 / wheel.pool.length;
       // The pointer is at 12 o'clock; stop at the chosen segment's centre.
       const landing = (360 - (winner + 0.5) * step) % 360;
@@ -122,6 +135,23 @@
         card.querySelector('.spw-zoom-in').addEventListener('click', () => updateZoom(part, getWheel(part).zoom + 0.5));
         card.querySelector('.spw-zoom-reset').addEventListener('click', () => updateZoom(part, 1));
         updateZoom(part, getWheel(part).zoom);
+        card.querySelectorAll('[data-wheel-topic]').forEach(entry => {
+          const pick = () => {
+            const current = getWheel(part);
+            if (current.spin) return;
+            const selected = current.pool.find(topic => topic.index === Number(entry.dataset.wheelTopic));
+            if (!selected) return;
+            current.selected = selected;
+            current.seen.add(selected.index);
+            const step = 360 / current.pool.length;
+            current.rotation = (360 - (selected.index + 0.5) * step) % 360;
+            update(part);
+          };
+          entry.addEventListener('click', pick);
+          entry.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); pick(); }
+          });
+        });
         mountCollection(card.querySelector('.spw-study'));
         card.querySelector('.spw-open').addEventListener('click', () => {
           const wheel = getWheel(part);

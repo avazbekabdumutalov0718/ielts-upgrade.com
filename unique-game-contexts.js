@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VERSION='v37-2026-10-05';
+  const VERSION='v41-2026-10-12-speaking-answers';
 
   function hash(input){let x=2166136261>>>0;for(const ch of String(input||'')){x^=ch.charCodeAt(0);x=Math.imul(x,16777619)>>>0}return x>>>0}
   const choose=(arr,seed,step=0)=>arr[((seed+(step*2654435761>>>0))>>>0)%arr.length];
@@ -93,31 +93,37 @@
     return text+' _____';
   }
 
+  // Imported Speaking topic games must use the actual sample-answer sentence.
+  // Other vocabulary keeps its separately generated, varied practice contexts.
+  function sourceOrPractice(w,slot=0){
+    return w?.sampleAnswerSource && String(w.e||'').trim() ? String(w.e) : sentence(w,slot);
+  }
+
   try{
-    practiceExampleFor=(w,variant=0)=>sentence(w,100+Number(variant||0));
-    naturalExampleFor=(w,variant=0)=>sentence(w,200+Number(variant||0));
-    gapText=(w,variant=0)=>mask(sentence(w,300+Number(variant||0)),w.w);
+    practiceExampleFor=(w,variant=0)=>sourceOrPractice(w,100+Number(variant||0));
+    naturalExampleFor=(w,variant=0)=>sourceOrPractice(w,200+Number(variant||0));
+    gapText=(w,variant=0)=>mask(sourceOrPractice(w,300+Number(variant||0)),w.w);
 
     gameTypingPrompt=(w)=>{
       const n=hash(String(w.id??w.w)+'|typing')%4;
-      if(n===0)return{label:'Yangi kontekstdagi bo‘shliqni to‘ldiring',text:mask(sentence(w,401),w.w)};
+      if(n===0)return{label:'Yangi kontekstdagi bo‘shliqni to‘ldiring',text:mask(sourceOrPractice(w,401),w.w)};
       if(n===1)return{label:'O‘zbekcha ma’noga qarab inglizchasini yozing',text:w.u};
-      if(n===2)return{label:'Boshqa kontekstdagi iborani yozing',text:mask(sentence(w,402),w.w)};
+      if(n===2)return{label:'Boshqa kontekstdagi iborani yozing',text:mask(sourceOrPractice(w,402),w.w)};
       return{label:'Harf yordami bilan so‘z yoki iborani yozing',text:String(w.u||'')+' · '+String(w.w||'').split(/\s+/).map(x=>x.charAt(0).toUpperCase()+'…').join(' ')};
     };
 
     gameChoicePrompt=(w,mode,index)=>{
       const base=mode==='rush'?520:510;
       const n=hash(String(w.id??w.w)+'|'+mode+'|'+index)%3;
-      if(n===0)return{reverse:false,label:'Kontekstdagi so‘z yoki iboraning ma’nosini toping',text:sentence(w,base+(index%17))};
+      if(n===0)return{reverse:false,label:'Kontekstdagi so‘z yoki iboraning ma’nosini toping',text:sourceOrPractice(w,base+(index%17))};
       if(n===1)return{reverse:true,label:'Qaysi inglizcha so‘z yoki ibora shu ma’noga mos?',text:w.u};
-      return{reverse:false,label:'Bu yangi misolda ishlatilgan iboraning ma’nosi qaysi?',text:sentence(w,base+31+(index%19))};
+      return{reverse:false,label:'Bu yangi misolda ishlatilgan iboraning ma’nosi qaysi?',text:sourceOrPractice(w,base+31+(index%19))};
     };
 
     const oldCardMarkup=cardMarkup;
     cardMarkup=(w,back=false,cls='')=>{
       if(!back)return oldCardMarkup(w,false,cls);
-      return oldCardMarkup({...w,e:sentence(w,600)},true,cls);
+      return oldCardMarkup({...w,e:sourceOrPractice(w,600)},true,cls);
     };
   }catch(e){console.warn('Unique game context overrides:',e)}
 

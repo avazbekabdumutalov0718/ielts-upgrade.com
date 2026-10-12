@@ -9,6 +9,31 @@
     const index = Math.abs(Math.trunc(Number(variant) || 0)) % Math.max(1, examples.length);
     return examples[index] || word.e || '';
   }
+  function answerMarkup(value, words) {
+    // Mark the collocations that actually occur in this individual answer.
+    const phrases = [...new Set(words.map(word => String(word.w || '').trim()).filter(Boolean))]
+      .sort((a, b) => b.length - a.length);
+    const raw = String(value || '').replace(/\\*\\*/g, '').replace(/ {2,}/g, '\\n\\n');
+    return raw.split(/\\n\\s*\\n/).map(paragraph => {
+      const content = paragraph.replace(/\\s+/g, ' ').trim();
+      const lower = content.toLocaleLowerCase('en').replace(/[’‘]/g, "'");
+      const ranges = [];
+      phrases.forEach(phrase => {
+        const needle = phrase.toLocaleLowerCase('en').replace(/[’‘]/g, "'");
+        const i = lower.indexOf(needle);
+        if (i >= 0 && !ranges.some(r => i < r.end && i + needle.length > r.start))
+          ranges.push({start: i, end: i + needle.length});
+      });
+      ranges.sort((a, b) => a.start - b.start);
+      let output = '', cursor = 0;
+      ranges.forEach(r => {
+        output += escape(content.slice(cursor, r.start));
+        output += '<mark class="stc-answer-phrase">' + escape(content.slice(r.start, r.end)) + '</mark>';
+        cursor = r.end;
+      });
+      return '<p>' + output + escape(content.slice(cursor)) + '</p>';
+    }).join('');
+  }
   function create({getBank, getWord = () => null, getGames, getProgress = () => null, onGame, onQuestion, onSpeak}) {
     const collections = new Map(), wordsById = new Map();
     function collect(part, topicIndex) {
@@ -69,9 +94,7 @@
     }
     function questionMarkup(collection) {
       const questions = collection.byQuestion.map(({question, questionIndex, items}) => {
-        const answer = String(question.answer || '').split(/\n\s*\n/).map(paragraph =>
-          '<p>' + escape(paragraph).replace(/\*\*([^*]+)\*\*/g, '<mark class="stc-answer-phrase">$1</mark>').replace(/\n/g, ' ') + '</p>'
-        ).join('');
+        const answer = answerMarkup(question.answer, items);
         return '<article class="stc-qa-card"><h4><span>' + String(questionIndex + 1).padStart(2, '0') +
           '</span> ' + escape(question.q) + '</h4><div class="stc-sample-label">SAMPLE ANSWER</div>' +
           '<div class="stc-sample-answer" lang="en">' + answer + '</div><h5>Shu javobdagi barcha ' + items.length +

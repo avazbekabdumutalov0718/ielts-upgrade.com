@@ -39,3 +39,8 @@
 @media(max-width:1100px){.spw-layout{grid-template-columns:1fr;gap:18px}.spw-card{max-width:800px;margin-inline:auto}.spw-catalog ol{max-height:250px}.spw-controls{padding-top:0}}
 @media(max-width:480px){.spw-card{padding:14px}.spw-heading h2{font-size:21px}.spw-heading{gap:8px}.spw-intro{font-size:12px}.spw-zoom{gap:5px}.spw-zoom>span{font-size:11px}.spw-viewport{padding:16px 6px 8px}.spw-result strong{font-size:19px}.spw-hub{border-width:2px}}
 @media(prefers-reduced-motion:reduce){.spw-disc{will-change:auto}}
+
+/* Every wheel topic is keyboard-selectable, including on smaller screens. */
+.spw-catalog li[role="button"]{cursor:pointer;transition:background .16s ease,color .16s ease}
+.spw-catalog li[role="button"]:hover{background:#efe8ff;color:#503391}
+.spw-catalog li[role="button"]:focus-visible{outline:3px solid #a88af1;outline-offset:2px;background:#efe8ff}
