@@ -10,27 +10,34 @@
     return examples[index] || word.e || '';
   }
   function answerMarkup(value, words) {
-    // Mark the collocations that actually occur in this individual answer.
-    const phrases = [...new Set(words.map(word => String(word.w || '').trim()).filter(Boolean))]
-      .sort((a, b) => b.length - a.length);
+    // Highlight every occurrence of an imported collocation (longest first).
     const raw = String(value || '').replace(/\*\*/g, '').replace(/ {2,}/g, '\n\n');
+    const phrases = [...new Set(words.map(card => String(card.w || '').trim()).filter(Boolean))]
+      .sort((a, b) => b.length - a.length);
     return raw.split(/\n\s*\n/).map(paragraph => {
       const content = paragraph.replace(/\s+/g, ' ').trim();
       const lower = content.toLocaleLowerCase('en').replace(/[’‘]/g, "'");
+      const covered = Array(content.length).fill(false);
       const ranges = [];
-      phrases.forEach(phrase => {
+      for (const phrase of phrases) {
         const needle = phrase.toLocaleLowerCase('en').replace(/[’‘]/g, "'");
-        const i = lower.indexOf(needle);
-        if (i >= 0 && !ranges.some(r => i < r.end && i + needle.length > r.start))
-          ranges.push({start: i, end: i + needle.length});
-      });
+        let start = 0, found;
+        while ((found = lower.indexOf(needle, start)) >= 0) {
+          const stop = found + needle.length;
+          if (!covered.slice(found, stop).some(Boolean)) {
+            ranges.push({start: found, end: stop});
+            for (let i = found; i < stop; i++) covered[i] = true;
+          }
+          start = found + Math.max(1, needle.length);
+        }
+      }
       ranges.sort((a, b) => a.start - b.start);
       let output = '', cursor = 0;
-      ranges.forEach(r => {
-        output += escape(content.slice(cursor, r.start));
-        output += '<mark class="stc-answer-phrase">' + escape(content.slice(r.start, r.end)) + '</mark>';
-        cursor = r.end;
-      });
+      for (const range of ranges) {
+        output += escape(content.slice(cursor, range.start));
+        output += '<mark class="stc-answer-phrase">' + escape(content.slice(range.start, range.end)) + '</mark>';
+        cursor = range.end;
+      }
       return '<p>' + output + escape(content.slice(cursor)) + '</p>';
     }).join('');
   }
@@ -49,19 +56,17 @@
         const normalAnswer = normalize(answer);
         const questionItems = [];
         const available = (question.cards || []).map(ref => Number.isInteger(ref) ? getWord(ref) : ref).filter(card => card?.w);
-        const used = new Set();
-        const chosen = [];
-        // Include every marked phrase (not a fixed number). Then include any
-        // separately listed phrases used in this answer but not bolded.
+        // Keep EVERY collocation listed for this question in the source file.
+        // A phrase is not discarded just because punctuation or inflection varies.
+        const chosen = available.slice();
+        const known = new Set(chosen.map(card => normalize(card.w)));
         for (const match of String(question.answer || '').matchAll(/\*\*([^*]+)\*\*/g)) {
           const phrase = match[1].trim();
-          const index = available.findIndex((card, i) => !used.has(i) && normalize(card.w) === normalize(phrase));
-          if (index >= 0) { chosen.push(available[index]); used.add(index); }
-          else if (phrase) chosen.push({w: phrase, u: 'Tarjimasi hali kiritilmagan'});
+          if (phrase && !known.has(normalize(phrase))) {
+            chosen.push({w: phrase, u: 'Tarjimasi hali kiritilmagan'});
+            known.add(normalize(phrase));
+          }
         }
-        available.forEach((card, index) => {
-          if (!used.has(index) && normalAnswer.includes(normalize(card.w))) chosen.push(card);
-        });
         chosen.forEach((card, cardIndex) => {
           const ownExample = clean(card.e);
           const sentence = ownExample && normalAnswer.includes(normalize(ownExample)) ? ownExample :
@@ -97,7 +102,7 @@
         const answer = answerMarkup(question.answer, items);
         return '<article class="stc-qa-card"><h4><span>' + String(questionIndex + 1).padStart(2, '0') +
           '</span> ' + escape(question.q) + '</h4><div class="stc-sample-label">SAMPLE ANSWER</div>' +
-          '<div class="stc-sample-answer" lang="en">' + answer + '</div><h5>Shu javobdagi barcha ' + items.length +
+          '<button type="button" class="stc-answer-listen" data-stc-answer-read="' + questionIndex + '">🔊 Sample answerni eshitish</button><div class="stc-sample-answer" lang="en">' + answer + '</div><h5>Shu javobdagi barcha ' + items.length +
           ' ta collocation</h5><ol class="stc-question-phrases">' + items.map(item =>
             '<li><strong lang="en">' + escape(item.w) + '</strong><span>' + escape(item.u) + '</span></li>'
           ).join('') + '</ol></article>';
@@ -120,6 +125,14 @@
         ).join('') + '</div></section>';
     }
     function mount(host) {
+      if (!host) return;
+      host.querySelectorAll('[data-stc-answer-read]').forEach(button => button.addEventListener('click', () => {
+        const section = button.closest('[data-study-part][data-study-topic]');
+        if (!section) return;
+        const collection = collect(Number(section.dataset.studyPart), Number(section.dataset.studyTopic));
+        const row = collection?.byQuestion?.[Number(button.dataset.stcAnswerRead)];
+        if (row) onSpeak(clean(row.question.answer));
+      }));
       host.querySelectorAll('[data-stc-game]').forEach(button => button.addEventListener('click', () => {
         const collection = collect(Number(button.dataset.part), Number(button.dataset.topic));
         if (collection?.items.length && getGames().some(game => game[0] === button.dataset.stcGame)) onGame(button.dataset.stcGame, collection);
