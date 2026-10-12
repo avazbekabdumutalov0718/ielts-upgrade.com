@@ -31,3 +31,22 @@
 @media(max-width:1250px){.stc-games{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:750px){.stc-games{grid-template-columns:repeat(2,minmax(0,1fr))}.stc-cards{grid-template-columns:1fr}.stc-heading h2{font-size:21px}.stc-card{padding:17px}}
 @media(max-width:400px){.stc-games .game-tile{padding:12px}.stc-games .game-tile strong{font-size:14px}.stc-games .game-tile small{font-size:11px}.stc-heading{gap:10px}.stc-heading>div{flex-basis:100%}}
+
+/* One complete set of questions, answers, and their collocations per wheel topic. */
+.stc-questions{margin:16px 0 32px}
+.stc-questions>h3,.stc-collection-title{font-size:21px;margin:20px 0 14px;color:#2d2545}
+.stc-qa-card{margin:0 0 18px;padding:22px 24px;background:#fff;border:1px solid #e5ddec;border-radius:16px;box-shadow:0 3px 12px #24134308;overflow-wrap:anywhere}
+.stc-qa-card h4{font-size:17px;line-height:1.6;margin:0 0 16px;color:#30234e}
+.stc-qa-card h4 span{font-size:13px;font-weight:800;color:#8865bb;margin-right:9px}
+.stc-sample-label{color:#6f47aa;font-size:11px;font-weight:850;letter-spacing:.08em;margin-bottom:8px}
+.stc-sample-answer{font-size:15px;line-height:1.9;color:#353047}
+.stc-sample-answer p{margin:0 0 13px}
+.stc-answer-phrase{font-weight:750;background:#efe6ff;color:#3c2284;border-radius:4px;padding:1px 2px}
+.stc-qa-card h5{font-size:14px;line-height:1.5;color:#402b72;margin:19px 0 10px}
+.stc-question-phrases{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stc-question-phrases li{border:1px solid #e7dff0;background:#faf8ff;border-radius:9px;padding:10px 12px;min-width:0;overflow-wrap:anywhere}
+.stc-question-phrases strong{display:block;font-size:13px;line-height:1.5;color:#4f2b94}
+.stc-question-phrases span{display:block;font-size:12px;line-height:1.5;color:#625772;margin-top:3px}
+.stc-collection-title{padding-top:20px;border-top:1px solid #e6ddec}
+.stc-collection-note{font-size:13px;line-height:1.7;color:#675c77;margin-bottom:20px}
+@media(max-width:720px){.stc-qa-card{padding:16px}.stc-question-phrases{grid-template-columns:1fr}.stc-sample-answer{font-size:14px}}
