@@ -114,6 +114,8 @@ async function hydrateCollocations(){
  });
 }
 function setStage(next){
+ if(activeGame?.timer)clearInterval(activeGame.timer);
+ qs('#ar-rush-time')?.remove();
  if(next<1||next>5)return;
  if(next>Math.max(stage,rec().stage||1))return;
  if(stage===3&&next===4&&!rec().gateDone){notify('Finish the four basket games and vocabulary quiz first.');return}
@@ -162,30 +164,110 @@ function finalBasketQuiz(bag){
  next();
 }
 function wireGate(){qsa('[data-gate]').forEach(b=>b.onclick=()=>gateRound(Number(b.dataset.gate)));qs('#ar-unlock')?.addEventListener('click',()=>setStage(4))}
-function openGame(mode){
- let pool=gameWords().filter(w=>w.u);
- let dest=qs('#ar-game-play');if(!dest)return;if(!pool.length){dest.innerHTML='<p>Get a translation for at least one word before playing.</p>';return}
- let index=0,score=0;const max=Math.min(10,pool.length);let order=[...pool].sort((a,b)=>norm(a.w).localeCompare(norm(b.w))).slice(0,max);
- function turn(){
-  if(index>=max){dest.innerHTML='<div class="ar-round"><h3>Game completed</h3><p>Score: '+score+' / '+max+'</p><button id="ar-replay">Play again</button></div>';qs('#ar-replay',dest).onclick=()=>openGame(mode);return}
-  let w=order[index],options=[w,...pool.filter(x=>norm(x.w)!==norm(w.w)).slice(0,3)].sort((a,b)=>a.w.localeCompare(b.w));
-  let typing=mode===2||mode===3,reverse=mode===1||mode===6;
-  const sentence=w.e||('Practice expression: '+w.w+'.');
-  const prompt=mode===0?'Flashcard: reveal and say the meaning':mode===3?'Fill the missing expression in its source context':mode===4?'Listen and choose the Uzbek meaning':reverse?'Pick the correct English expression':'Choose the correct Uzbek translation';
-  dest.innerHTML='<div class="ar-round"><h3>'+E(gameTitles[mode])+'</h3><p>'+(index+1)+' / '+max+' · '+E(prompt)+'</p><div class="ar-game-term">'+E(mode===0?w.w:mode===3?sentence.replace(w.w,'_____'):reverse?w.u:mode===2?w.u:w.w)+'</div>'+
-  (typing?'<input id="ar-answer" placeholder="Type your answer"><button id="ar-submit">Check</button>':mode===0?'<button id="ar-reveal">Reveal translation</button>':'<div class="ar-options">'+options.map((o,j)=>'<button data-game-option="'+j+'">'+E(reverse?o.w:o.u)+'</button>').join('')+'</div>')+
-  (mode===4?'<button id="ar-say">🔊 Listen</button>':'')+'<div class="ar-round-status"></div><button id="ar-next-game" hidden>Next →</button></div>';
-  const finish=correct=>{score+=correct?1:0;qs('.ar-round-status',dest).textContent=(correct?'✓ Correct':'Answer: '+(reverse?w.w:w.u));qs('#ar-next-game',dest).hidden=false};
-  qsa('[data-game-option]',dest).forEach(b=>b.onclick=()=>{let result=options[Number(b.dataset.gameOption)]?.w===w.w;finish(result);qsa('[data-game-option]',dest).forEach(x=>x.disabled=true)});
-  qs('#ar-submit',dest)?.addEventListener('click',()=>finish(norm(qs('#ar-answer',dest)?.value)===norm(w.w)));
-  qs('#ar-reveal',dest)?.addEventListener('click',()=>finish(true));
-  qs('#ar-say',dest)?.addEventListener('click',()=>{if('speechSynthesis'in window){speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(w.w);u.lang='en-US';speechSynthesis.speak(u)}});
-  qs('#ar-next-game',dest)?.addEventListener('click',()=>{index++;turn()});
- }
- turn();dest.scrollIntoView({behavior:'smooth',block:'nearest'});
+function openGame(mode) {
+  if (!Number.isInteger(mode) || mode < 0 || mode > 6) return;
+  if (activeGame?.timer) clearInterval(activeGame.timer);
+  const dest=qs('#ar-game-play');if(!dest)return;
+  const seen=new Set();
+  const pool=gameWords().filter(w=>{const key=norm(w.w);if(!key||!w.u||seen.has(key))return false;seen.add(key);return true});
+  if (!pool.length){dest.innerHTML='<p>O‘zbekcha tarjimasi tasdiqlangan so‘z yoki collocation hali yo‘q.</p>';return}
+  if ([1,4,5,6].includes(mode)&&pool.length<2){dest.innerHTML='<p>Bu o‘yin uchun kamida 2 ta turli tarjimali ibora kerak. 3-bosqichda yana so‘z qo‘shing.</p>';return}
+  const shuffled = a=>a.map(x=>({x,r:Math.random()})).sort((x,y)=>x.r-y.r).map(o=>o.x);
+  let order=shuffled(pool), index=0, score=0, locked=false, finished=false;
+  activeGame={mode,timer:null};
+  const renderResult=()=>{
+    finished=true;if(activeGame?.timer)clearInterval(activeGame.timer);
+    const state=rec();state.games=state.games||{};const previous=state.games[mode]||{};
+    state.games[mode]={attempts:(previous.attempts||0)+1,best:Math.max(previous.best||0,score),total:order.length};persist();
+    dest.innerHTML='<div class="ar-round"><h3>'+E(gameTitles[mode])+' · Natija</h3><p>'+score+' / '+order.length+' to‘g‘ri javob</p><button id="ar-replay" class="ar-primary">↻ Qayta o‘ynash</button></div>';
+    qs('#ar-replay',dest).onclick=()=>openGame(mode);
+  };
+  const next=()=>{if(finished)return;index++;if(index>=order.length){renderResult();return}turn()};
+  const normalizeInput=v=>norm(v).replace(/[.!?;:,]+$/g,'').replace(/\s+/g,' ');
+  const answer=(isCorrect,correctAnswer)=>{
+    if(locked||finished)return;locked=true;if(isCorrect)score++;
+    const label=qs('.ar-round-status',dest);if(label)label.textContent=isCorrect?'✓ To‘g‘ri':'✗ To‘g‘ri javob: '+correctAnswer;
+    qsa('.ar-round [data-answer]',dest).forEach(btn=>btn.disabled=true);
+    const input=qs('#ar-answer',dest);if(input)input.disabled=true;
+    const submit=qs('#ar-submit',dest);if(submit)submit.disabled=true;
+    const nxt=qs('#ar-game-next',dest);if(nxt)nxt.hidden=false;
+  };
+  const optionsFor=w=>{
+    const distinct=shuffled(pool.filter(x=>norm(x.w)!==norm(w.w)&&norm(x.u)!==norm(w.u)));
+    return shuffled([w,...distinct.slice(0,3)]);
+  };
+  const round=(body,showNext=true)=>{
+    locked=false;dest.innerHTML='<div class="ar-round"><h3>'+E(gameTitles[mode])+'</h3><p>'+String(index+1)+' / '+order.length+'</p>'+body+'<p class="ar-round-status" aria-live="polite"></p>'+(showNext?'<button id="ar-game-next" hidden class="ar-primary">Keyingisi →</button>':'')+'</div>';
+    qs('#ar-game-next',dest)?.addEventListener('click',next);
+  };
+  function turn(){
+    if(index>=order.length){renderResult();return}
+    const word=order[index];
+    const options=optionsFor(word);
+    if(mode===0){
+      round('<p class="ar-game-term">'+E(word.w)+'</p><button id="ar-reveal">Tarjimasini ko‘rish</button><div id="ar-flash-back" hidden><p>'+E(word.u)+'</p><button id="ar-know">Bilaman ✓</button><button id="ar-retry">Yana takrorlayman</button></div>',false);
+      qs('#ar-reveal',dest).onclick=()=>{qs('#ar-flash-back',dest).hidden=false;qs('#ar-reveal',dest).disabled=true};
+      qs('#ar-know',dest).onclick=()=>{score++;next()};
+      qs('#ar-retry',dest).onclick=next;return;
+    }
+    if(mode===1){
+      const pack=order.slice(index,Math.min(index+4,order.length));
+      const answers=shuffled(pack.map(x=>({...x})));
+      round('<p>Chapdagi iborani o‘ngdagi tarjimaga moslang.</p><div class="ar-match-pairs"><div>'+pack.map((w,i)=>'<button data-pick-en="'+i+'">'+E(w.w)+'</button>').join('')+'</div><div>'+answers.map((w,i)=>'<button data-pick-uz="'+i+'">'+E(w.u)+'</button>').join('')+'</div></div><small class="ar-match-count">0 / '+pack.length+'</small>',false);
+      let selected=-1,matched=0;
+      qsa('[data-pick-en]',dest).forEach(b=>b.onclick=()=>{if(b.disabled)return;selected=Number(b.dataset.pickEn);qsa('[data-pick-en]',dest).forEach(x=>x.classList.remove('is-picking'));b.classList.add('is-picking')});
+      qsa('[data-pick-uz]',dest).forEach(b=>b.onclick=()=>{
+        if(b.disabled||selected<0)return;
+        const original=pack[selected],chosen=answers[Number(b.dataset.pickUz)];
+        if(norm(original.w)===norm(chosen.w)){
+          b.disabled=true;qs('[data-pick-en="'+selected+'"]',dest).disabled=true;
+          qs('[data-pick-en="'+selected+'"]',dest).classList.add('is-matched');b.classList.add('is-matched');
+          matched++;score++;qs('.ar-match-count',dest).textContent=matched+' / '+pack.length;
+          if(matched===pack.length){index+=pack.length;if(index>=order.length)renderResult();else turn()}
+        }else{qs('.ar-round-status',dest).textContent='Qayta urinib ko‘ring'}
+        selected=-1;qsa('[data-pick-en]',dest).forEach(x=>x.classList.remove('is-picking'));
+      });return;
+    }
+    if(mode===2||mode===3){
+      const evidence=String(word.e||'');
+      const at=evidence.toLowerCase().indexOf(word.w.toLowerCase());
+      const gap=mode===3&&at>=0?evidence.slice(0,at)+'_____'+evidence.slice(at+word.w.length):'Ma’nosi: '+word.u;
+      const title=mode===3?'Asl matndagi bo‘shliqni to‘ldiring':'Tarjimasiga qarab inglizchasini yozing';
+      round('<p>'+E(title)+'</p><p class="ar-game-term">'+E(mode===3?gap:word.u)+'</p><input id="ar-answer" autocomplete="off" spellcheck="false" placeholder="Inglizcha javobni yozing"><button id="ar-submit">Tekshirish</button>');
+      const check=()=>answer(normalizeInput(qs('#ar-answer',dest)?.value)===normalizeInput(word.w),word.w);
+      qs('#ar-submit',dest).onclick=check;
+      qs('#ar-answer',dest).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(!locked)check();else next()}});
+      return;
+    }
+    const reverse=mode===6;
+    const itemText=reverse?word.u:word.w;
+    const choices=options.map((o,i)=>'<button data-answer="'+i+'">'+E(reverse?o.w:o.u)+'</button>').join('');
+    const label=mode===4?'Talaffuzni tinglang va tarjimasini belgilang':mode===6?'Tez javob bering: inglizchasini tanlang':'To‘g‘ri o‘zbekcha tarjimani belgilang';
+    round('<p>'+E(label)+'</p><p class="ar-game-term">'+E(itemText)+'</p>'+(mode===4?'<button id="ar-say">🔊 Eshitish</button>':'')+'<div class="ar-options">'+choices+'</div>');
+    qs('#ar-say',dest)?.addEventListener('click',()=>{
+      if('speechSynthesis' in window){window.speechSynthesis.cancel();const voice=new SpeechSynthesisUtterance(word.w);voice.lang='en-US';window.speechSynthesis.speak(voice)}
+      else qs('.ar-round-status',dest).textContent='Bu qurilmada ovoz chiqarish qo‘llab-quvvatlanmaydi.';
+    });
+    qsa('[data-answer]',dest).forEach(b=>b.onclick=()=>{
+      if(finished)return;const chosen=options[Number(b.dataset.answer)];
+      answer(norm(chosen?.w)===norm(word.w),reverse?word.w:word.u);
+    });
+  }
+  if(mode===6){
+    const seconds=60;
+    const badge=document.createElement('div');badge.id='ar-rush-time';badge.setAttribute('aria-live','polite');
+    dest.before(badge);let remaining=seconds;
+    const display=()=>{badge.textContent='⏳ '+remaining+' soniya'};
+    display();const timer=setInterval(()=>{
+      remaining--;display();if(remaining<=0){clearInterval(timer);if(!finished)renderResult();badge.remove()}
+    },1000);activeGame.timer=timer;
+  }
+  turn();
+  dest.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
 function wireArticle(){
- qs('#ar-back')?.addEventListener('click',()=>{active=null;closeTip();running=false;clearInterval(ticker);history.replaceState(null,'','#articles');ensureHost()});
+ qs('#ar-back')?.addEventListener('click',()=>{if(activeGame?.timer)clearInterval(activeGame.timer);qs('#ar-rush-time')?.remove();active=null;closeTip();running=false;clearInterval(ticker);history.replaceState(null,'','#articles');ensureHost()});
  qsa('[data-stage]').forEach(b=>b.onclick=()=>setStage(Number(b.dataset.stage)));
  qs('#ar-previous')?.addEventListener('click',()=>setStage(stage-1));
  qs('#ar-next')?.addEventListener('click',()=>{if(stage!==3||rec().gateDone)setStage(stage+1)});
