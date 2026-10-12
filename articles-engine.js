@@ -29,9 +29,20 @@ async function initData(){
  // User can locally import the prepared article data while the GitHub upload is pending.
  try{const raw=localStorage.getItem(CACHE);if(raw)db=cleanContent(JSON.parse(raw).articles)}catch{}
 }
+function articleVisual(a){
+ const name=norm(a.title+' '+(a.body||[]).slice(0,2).join(' ').slice(0,300));
+ let icon='📖',category='Reading';
+ if(/health|wellness|food|diet|brain|sleep|medical|medicine|body|disease/.test(name)){icon='🧬';category='Health & Life'}
+ else if(/space|universe|planet|moon|mars|galaxy|solar|star/.test(name)){icon='🪐';category='Space'}
+ else if(/climat|environment|planet|nature|ocean|earth|wildlife|animal/.test(name)){icon='🌿';category='Nature'}
+ else if(/technology|robot|computer|artificial intelligence|digital|internet/.test(name)){icon='⚙️';category='Technology'}
+ else if(/history|ancient|culture|society|people/.test(name)){icon='🏛️';category='Culture'}
+ else if(/physics|energy|chemical|research|scientist|experiment/.test(name)){icon='🔬';category='Science'}
+ return '<span class="ar-cover" role="img" aria-label="'+E(category)+' illustration"><span class="ar-cover-pattern" aria-hidden="true">◌</span><span class="ar-cover-icon" aria-hidden="true">'+icon+'</span><span class="ar-cover-category">'+E(category)+'</span></span>';
+}
 function buildIndex(){
  const magazine=db.filter(a=>a.kind==='magazine'),articles=db.filter(a=>a.kind==='article');
- const cards=arr=>arr.map(a=>{const p=progress[a.id]||{};return '<button class="ar-article" data-open="'+E(a.id)+'"><span class="ar-card-row">'+formatLevel(a.level)+'<small>'+E(a.words||0)+' words · '+E(a.pages||1)+' pages</small></span><strong>'+sanitizeTitle(a.title)+'</strong><span class="ar-article-footer">'+(p.complete?'✓ Completed':p.stage?'Continue step '+p.stage:'Start reading')+' <span aria-hidden="true">→</span></span></button>'}).join('');
+ const cards=arr=>arr.map(a=>{const p=progress[a.id]||{};return '<button class="ar-article" data-open="'+E(a.id)+'">'+articleVisual(a)+'<span class="ar-card-row">'+formatLevel(a.level)+'<small>'+E(a.words||0)+' words · '+E(a.pages||1)+' pages</small></span><strong>'+sanitizeTitle(a.title)+'</strong><span class="ar-article-footer">'+(p.complete?'✓ Completed':p.stage?'Continue step '+p.stage:'Start reading')+' <span aria-hidden="true">→</span></span></button>'}).join('');
  const filtered=articles.filter(a=>(level==='all'||a.level===level)&&(!query||norm(a.title).includes(norm(query))));
  const mags=magazine.filter(a=>(level==='all'||a.level===level)&&(!query||norm(a.title).includes(norm(query))));
  return '<section class="ar-shell"><div class="ar-header"><div><p class="ar-overline">SPEAKING & VOCAB · READING LIBRARY</p><h1>Articles</h1><p>Read, highlight, learn vocabulary and practise speaking & writing expressions through five stages.</p></div><div class="ar-counter"><b>'+articles.length+'</b><span>Articles</span><b>'+magazine.length+'</b><span>New Scientist issues</span></div></div>'+
@@ -41,7 +52,20 @@ function buildIndex(){
  '<h2 class="ar-section-title">100 articles · sorted by level <small>'+filtered.length+'</small></h2><div class="ar-grid">'+cards([...filtered].sort((a,b)=>levels.indexOf(a.level)-levels.indexOf(b.level)))+'</div></section>';
 }
 function ensureHost(){if(!host())return;host().innerHTML=active?renderArticle():buildIndex();wire();}
+function cleanOCRDisplay(value){
+ // Conservative display-only fixes. Original source remains intact.
+ return String(value||'')
+  .replace(/([A-Z])\s{2,}(?=[A-Z]\b)/g,'$1 ')
+  .replace(/\b([A-Z](?:\s+[A-Z]){3,})\b/g,match=>{
+   const letters=match.split(/\s+/);
+   // Only join strongly recognisable OCR-split long words; don't guess word boundaries.
+   const joined=letters.join('');
+   const known=/^(WELLNESS|NUTRITION|EXPERTS|PROVIDES|ESSENTIAL|BALANCED|HEALTHY|SCIENCE|CLIMATE|RESEARCH|SCIENC[E]?|ENERGY|MEDICINE|TECHNOLOGY)$/;
+   return known.test(joined)?joined:match;
+  });
+}
 function tokenMarkup(par,pi){
+ par=cleanOCRDisplay(par);
  const clickable=stage===2||stage===3;
  if(!clickable)return E(par);
  const rx=/[A-Za-z]+(?:[’'-][A-Za-z]+)*/g;let out='',pos=0,m,j=0;
@@ -184,8 +208,12 @@ function gateRound(i){
  gateIndex=i;let word=bag[i%bag.length],other=bag.filter(x=>x.w!==word.w);
  let box=qs('#ar-gate-play');if(!box)return;
  const opts=[word,...other.slice(0,3)];if(opts.length===1)opts.push({w:'not this word',u:'boshqa so‘z'});opts.sort((a,b)=>a.w.localeCompare(b.w));
- if(i===0||i===1)box.innerHTML='<div class="ar-round"><h4>'+(i===0?'Match the correct Uzbek meaning':'Choose the English collocation')+'</h4><p><strong>'+E(i===0?word.w:word.u)+'</strong></p>'+opts.map((o,j)=>'<button data-choice="'+j+'">'+E(i===0?o.u:o.w)+'</button>').join('')+'<div class="ar-round-status"></div></div>';
- else box.innerHTML='<div class="ar-round"><h4>'+(i===2?'Type the original English term':'Fill the collocation')+'</h4><p>'+E(i===2?word.u:(word.e||('This article contains '+word.w)).replace(word.w,'_____'))+'</p><input id="ar-round-input" placeholder="Type the English term"><button id="ar-round-check">Check</button><div class="ar-round-status"></div></div>';
+ if(!word.u){
+  const letters=word.w.replace(/[^A-Za-z]/g,'');
+  const hint=letters.slice(0,1)+'_'.repeat(Math.max(1,letters.length-1));
+  box.innerHTML='<div class="ar-round"><h4>English vocabulary practice '+(i+1)+'</h4><p>Type the saved word: '+E(hint)+'</p><input id="ar-round-input" placeholder="English word"><button id="ar-round-check">Check</button><div class="ar-round-status"></div></div>';
+ }else if(i===0||i===1)box.innerHTML='<div class="ar-round"><h4>'+(i===0?'Match the correct Uzbek meaning':'Choose the English collocation')+'</h4><p><strong>'+E(i===0?word.w:word.u)+'</strong></p>'+opts.map((o,j)=>'<button data-choice="'+j+'">'+E(i===0?o.u:o.w)+'</button>').join('')+'<div class="ar-round-status"></div></div>';
+ else box.innerHTML='<div class="ar-round"><h4>'+(i===2?'Type the original English term':'Fill the collocation')+'</h4><p>'+E(i===2?(word.u||('English term beginning with '+word.w[0])):(word.e||('This article contains '+word.w)).replace(word.w,'_____'))+'</p><input id="ar-round-input" placeholder="Type the English term"><button id="ar-round-check">Check</button><div class="ar-round-status"></div></div>';
  const finish=()=>{if(!gateScores.includes(i)){gateScores.push(i);rec().gateScores=[...gateScores];persist()}let done=qs('.ar-round-status',box);if(done)done.textContent='✓ Correct. Open the next game.';qsa('[data-gate]').forEach((b,k)=>{b.disabled=k>gateScores.length;if(k<gateScores.length)b.textContent='✓ '+b.textContent.replace(/^✓ /,'')});if(gateScores.length===5){rec().gateDone=true;persist();const section=qs('.ar-gate');section.outerHTML=gateMarkup();wireGate()}};
  qsa('[data-choice]',box).forEach(b=>b.onclick=()=>{let selected=opts[Number(b.dataset.choice)];if(selected?.w===word.w)finish();else qs('.ar-round-status',box).textContent='Try again'});
  qs('#ar-round-check',box)?.addEventListener('click',()=>{let answer=norm(qs('#ar-round-input',box)?.value);if(answer===norm(word.w))finish();else qs('.ar-round-status',box).textContent='Try again · Hint: '+word.w.slice(0,1)+'…'});
@@ -193,7 +221,7 @@ function gateRound(i){
 
 function finalBasketQuiz(bag){
  const box=qs('#ar-gate-play');if(!box)return;
- const pool=bag.filter(x=>x.w&&x.u);if(!pool.length)return;
+ const pool=bag.filter(x=>x.w);if(!pool.length)return;
  const count=Math.min(10,pool.length);let idx=0,score=0;const rows=pool.slice(0,count);
  function next(){
   if(idx===count){
@@ -203,10 +231,10 @@ function finalBasketQuiz(bag){
    if(pass&&!gateScores.includes(4)){gateScores.push(4);rec().gateScores=[...gateScores];rec().gateDone=true;persist();let section=qs('.ar-gate');let html=box.innerHTML;section.outerHTML=gateMarkup();wireGate();qs('#ar-gate-play').innerHTML=html}
    return;
   }
-  const row=rows[idx], reverse=idx%2===1,options=[row,...pool.filter(x=>x.w!==row.w).slice(0,3)];
+  const row=rows[idx], reverse=idx%2===1&&Boolean(row.u),options=[row,...pool.filter(x=>x.w!==row.w).slice(0,3)];
   if(options.length===1)options.push({w:'Other word',u:'Boshqa tarjima'});
   options.sort((a,b)=>String(a.w).localeCompare(String(b.w)));
-  box.innerHTML='<div class="ar-round"><h4>Quiz '+(idx+1)+' / '+count+'</h4><p>'+E(reverse?row.u:row.w)+'</p>'+options.map((x,j)=>'<button data-quiz-option="'+j+'">'+E(reverse?x.w:x.u)+'</button>').join('')+'<div class="ar-round-status"></div><button id="ar-quiz-next" hidden>Next →</button></div>';
+  box.innerHTML='<div class="ar-round"><h4>Quiz '+(idx+1)+' / '+count+'</h4><p>'+E(row.u?(reverse?row.u:row.w):('Choose the saved word: '+row.w.slice(0,1)+'…'))+'</p>'+options.map((x,j)=>'<button data-quiz-option="'+j+'">'+E(row.u?(reverse?x.w:x.u):x.w)+'</button>').join('')+'<div class="ar-round-status"></div><button id="ar-quiz-next" hidden>Next →</button></div>';
   qsa('[data-quiz-option]',box).forEach(btn=>btn.onclick=()=>{
    const yes=options[Number(btn.dataset.quizOption)]?.w===row.w;if(yes)score++;
    qs('.ar-round-status',box).textContent=yes?'✓ Correct':'Correct: '+row.w+' — '+row.u;
@@ -217,6 +245,32 @@ function finalBasketQuiz(bag){
  next();
 }
 function wireGate(){qsa('[data-gate]').forEach(b=>b.onclick=()=>gateRound(Number(b.dataset.gate)));qs('#ar-unlock')?.addEventListener('click',()=>setStage(4))}
+function englishOnlyGame(mode,dest){
+ const entries=[...(rec().cart||[]),...(active?.collocations||[])].filter(x=>x.w);
+ const pool=[...new Map(entries.map(x=>[norm(x.w),x.w])).values()];
+ if(!pool.length){dest.innerHTML='<p>First add an English word in Step 3.</p>';return}
+ let index=0,score=0;
+ function round(){
+  if(index>=pool.length){
+   const g=rec().games||(rec().games={}),previous=g[mode]||{};
+   g[mode]={attempts:(previous.attempts||0)+1,best:Math.max(previous.best||0,score),total:pool.length};
+   persist();
+   dest.innerHTML='<div class="ar-round"><h3>'+E(gameTitles[mode])+'</h3><p>'+score+' / '+pool.length+' correct</p><button class="ar-primary" id="ar-replay">Try again</button></div>';
+   qs('#ar-replay',dest).onclick=()=>englishOnlyGame(mode,dest);return;
+  }
+  const answer=pool[index],hint=answer[0]+'_'.repeat(Math.max(1,answer.length-1));
+  dest.innerHTML='<div class="ar-round"><h3>'+E(gameTitles[mode])+' · '+(index+1)+'/'+pool.length+'</h3><p>Recall the saved English word: '+E(hint)+'</p><input id="ar-english-guess" placeholder="Type English word"><button id="ar-english-check">Check</button><p class="ar-round-status"></p></div>';
+  const check=()=>{const input=qs('#ar-english-guess',dest);if(!input||input.disabled)return;
+   const yes=norm(input.value)===norm(answer);if(yes)score++;
+   input.disabled=true;qs('#ar-english-check',dest).textContent='Next →';
+   qs('.ar-round-status',dest).textContent=yes?'Correct!':'Answer: '+answer;
+   qs('#ar-english-check',dest).onclick=()=>{index++;round()};
+  };
+  qs('#ar-english-check',dest).onclick=check;
+  qs('#ar-english-guess',dest).onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();qs('#ar-english-check',dest)?.click()}};
+ }
+ round();
+}
 function openGame(mode) {
   if (!Number.isInteger(mode) || mode < 0 || mode > 6) return;
   if (activeGame?.timer) clearInterval(activeGame.timer);
@@ -224,7 +278,7 @@ function openGame(mode) {
   qs('#ar-rush-time')?.remove();
   const seen=new Set();
   const pool=gameWords().filter(w=>{const key=norm(w.w);if(!key||!w.u||seen.has(key))return false;seen.add(key);return true});
-  if (!pool.length){dest.innerHTML='<p>O‘zbekcha tarjimasi tasdiqlangan so‘z yoki collocation hali yo‘q.</p>';return}
+  if (!pool.length){return englishOnlyGame(mode,dest)}
   if ([1,4,5,6].includes(mode)&&pool.length<2){dest.innerHTML='<p>Bu o‘yin uchun kamida 2 ta turli tarjimali ibora kerak. 3-bosqichda yana so‘z qo‘shing.</p>';return}
   const shuffled = a=>a.map(x=>({x,r:Math.random()})).sort((x,y)=>x.r-y.r).map(o=>o.x);
   let order=shuffled(pool), index=0, score=0, locked=false, finished=false;
