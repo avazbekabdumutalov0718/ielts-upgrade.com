@@ -112,3 +112,6 @@
 #ar-marker{position:fixed;z-index:9000;pointer-events:none;font-size:23px;line-height:1;transform:rotate(-12deg);filter:drop-shadow(0 3px 5px #5a3c7933)}
 #ar-marker[hidden]{display:none}
 .ar-colloc-meaning{display:block;color:#8757b0;font-size:12px;font-weight:750;line-height:1.5;margin-top:5px}
+
+/* Article learning games: match pairs and timed rush */
+.ar-match-pairs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}.ar-match-pairs>div{display:grid;gap:9px}.ar-match-pairs button{background:#fff;color:#40296b;border:1px solid #dbcdea;border-radius:10px;padding:12px;text-align:left;min-height:54px;font-size:13px;line-height:1.45;overflow-wrap:anywhere}.ar-match-pairs button.is-picking{border:2px solid #6943b7;background:#f1eaff}.ar-match-pairs button.is-matched{background:#e0f5e9;color:#1b7957;opacity:1;border-color:#84cdaa}.ar-match-count{font-weight:800;color:#593a9b}#ar-rush-time{margin:12px 0;padding:12px 18px;border-radius:12px;background:#faecff;font-weight:900;color:#5d2995;width:max-content}.ar-options button:disabled{opacity:.7}.ar-round #ar-submit:disabled{opacity:.65}@media(max-width:520px){.ar-match-pairs{gap:6px}.ar-match-pairs button{font-size:11px;padding:9px}}
