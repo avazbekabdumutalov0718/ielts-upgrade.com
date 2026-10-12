@@ -5,7 +5,7 @@
   const COLORS = ['#5b3ab5', '#245ea8', '#187976', '#9a427a', '#965524'];
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
 
-  function create({getBank, onOpen}) {
+  function create({getBank, onOpen, renderCollection = () => '', mountCollection = () => {}}) {
     const wheels = new Map();
     let host = null;
     const topicsFor = part => (getBank()?.['part' + part] || [])
@@ -45,7 +45,7 @@
         '<button type="button" class="spw-spin" aria-label="Part ' + part + ' barabanini aylantirish"' + (wheel.spin || !topics.length ? ' disabled' : '') + '>' + (wheel.spin ? 'Aylanyapti…' : selected ? '↻ Yana aylantirish' : '↻ Aylantirish') + '</button>' +
         '<div class="spw-result" role="status" aria-live="polite" aria-atomic="true"><small>' + (wheel.spin ? 'MAVZU TANLANMOQDA' : selected ? 'TANLANGAN MAVZU' : 'TAYYORMISIZ?') + '</small><strong>' + escape(wheel.spin ? 'Baraban aylanyapti…' : selected?.title || 'Barabanni aylantiring') + '</strong></div>' +
         '<button type="button" class="spw-open"' + (!selected || wheel.spin ? ' hidden' : '') + '>Mavzu savollarini ochish →</button>' +
-        '<details class="spw-catalog" open><summary>Barabandagi barcha ' + topics.length + ' ta mavzu</summary><ol>' + topics.map(topic => '<li data-wheel-topic="' + topic.index + '"' + (selected?.index === topic.index ? ' class="is-selected"' : '') + '><span>' + escape(topic.title) + '</span><small>' + topic.count + ' ta savol</small></li>').join('') + '</ol></details></div></div></article></section>';
+        '<details class="spw-catalog" open><summary>Barabandagi barcha ' + topics.length + ' ta mavzu</summary><ol>' + topics.map(topic => '<li data-wheel-topic="' + topic.index + '"' + (selected?.index === topic.index ? ' class="is-selected"' : '') + '><span>' + escape(topic.title) + '</span><small>' + topic.count + ' ta savol</small></li>').join('') + '</ol></details></div></div><div class="spw-study"' + (!selected || wheel.spin ? ' hidden' : '') + '>' + (selected && !wheel.spin ? renderCollection(part, selected.index) : '') + '</div></article></section>';
     }
     function update(part) {
       const card = cardFor(part), wheel = getWheel(part);
@@ -58,6 +58,12 @@
       card.querySelector('.spw-result small').textContent = spinning ? 'MAVZU TANLANMOQDA' : 'TANLANGAN MAVZU';
       card.querySelector('.spw-result strong').textContent = spinning ? 'Baraban aylanyapti…' : wheel.selected?.title || 'Barabanni aylantiring';
       card.querySelector('.spw-open').hidden = spinning || !wheel.selected;
+      const study = card.querySelector('.spw-study');
+      study.hidden = spinning || !wheel.selected;
+      if (!study.hidden) {
+        study.innerHTML = renderCollection(part, wheel.selected.index);
+        mountCollection(study);
+      }
       card.querySelectorAll('[data-wheel-topic]').forEach(item => item.classList.toggle('is-selected', !spinning && Number(item.dataset.wheelTopic) === wheel.selected?.index));
     }
     function animate(part) {
@@ -116,6 +122,7 @@
         card.querySelector('.spw-zoom-in').addEventListener('click', () => updateZoom(part, getWheel(part).zoom + 0.5));
         card.querySelector('.spw-zoom-reset').addEventListener('click', () => updateZoom(part, 1));
         updateZoom(part, getWheel(part).zoom);
+        mountCollection(card.querySelector('.spw-study'));
         card.querySelector('.spw-open').addEventListener('click', () => {
           const wheel = getWheel(part);
           if (!wheel.spin && wheel.selected) {
