@@ -13,9 +13,9 @@
     // Mark the collocations that actually occur in this individual answer.
     const phrases = [...new Set(words.map(word => String(word.w || '').trim()).filter(Boolean))]
       .sort((a, b) => b.length - a.length);
-    const raw = String(value || '').replace(/\\*\\*/g, '').replace(/ {2,}/g, '\\n\\n');
-    return raw.split(/\\n\\s*\\n/).map(paragraph => {
-      const content = paragraph.replace(/\\s+/g, ' ').trim();
+    const raw = String(value || '').replace(/\*\*/g, '').replace(/ {2,}/g, '\n\n');
+    return raw.split(/\n\s*\n/).map(paragraph => {
+      const content = paragraph.replace(/\s+/g, ' ').trim();
       const lower = content.toLocaleLowerCase('en').replace(/[’‘]/g, "'");
       const ranges = [];
       phrases.forEach(phrase => {
