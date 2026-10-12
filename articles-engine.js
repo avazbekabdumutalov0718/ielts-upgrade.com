@@ -120,8 +120,8 @@ function speedMarkup(){return '<section class="ar-speedbox"><h2>⏱ Speed readin
 function isUnderstandingMCQ(q){
  if(!q||!Array.isArray(q.options)||q.options.length!==4)return false;
  const prompt=String(q.text||'').trim();
- if(!prompt||/complete the exact statement|fill (?:in )?the blank|missing word|_____+|\\bwhich word\\b|exact phrase from the article/i.test(prompt))return false;
- return /\\b(why|how|what|which|according to|main (?:idea|purpose|reason)|suggest|imply|infer|author|writer|conclusion|best describes|most likely|primary|view|attitude|argument|evidence)\\b/i.test(prompt);
+ if(!prompt||/complete the exact statement|fill (?:in )?the blank|missing word|_____+|\bwhich word\b|exact phrase from the article/i.test(prompt))return false;
+ return /\b(why|how|what|which|when|where|who|according to|main (?:idea|purpose|reason)|suggest|imply|infer|author|writer|conclusion|best describes|most likely|primary|view|attitude|argument|evidence)\b/i.test(prompt);
 }
 function understandingQuizNotice(){
  return '<section class="ar-questions"><h2>IELTS Reading · Understanding questions</h2><p>These questions should test main ideas, arguments, inference, author purpose and supporting evidence—not missing words.</p><p class="ar-warning">This article\'s existing multiple-choice questions are word-completion exercises, not verified IELTS comprehension questions. They have been hidden rather than presented as valid understanding tests. Editorial replacement is still required.</p></section>';
