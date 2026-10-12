@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VERSION='v41-2026-10-12-speaking-answers';
+  const VERSION='v44-2026-10-12-speaking-source-games';
 
   function hash(input){let x=2166136261>>>0;for(const ch of String(input||'')){x^=ch.charCodeAt(0);x=Math.imul(x,16777619)>>>0}return x>>>0}
   const choose=(arr,seed,step=0)=>arr[((seed+(step*2654435761>>>0))>>>0)%arr.length];
@@ -106,18 +106,18 @@
 
     gameTypingPrompt=(w)=>{
       const n=hash(String(w.id??w.w)+'|typing')%4;
-      if(n===0)return{label:'Yangi kontekstdagi bo‘shliqni to‘ldiring',text:mask(sourceOrPractice(w,401),w.w)};
+      if(n===0)return{label:w.sampleAnswerSource?'Sample answerdagi bo‘shliqni to‘ldiring':'Yangi kontekstdagi bo‘shliqni to‘ldiring',text:mask(sourceOrPractice(w,401),w.w)};
       if(n===1)return{label:'O‘zbekcha ma’noga qarab inglizchasini yozing',text:w.u};
-      if(n===2)return{label:'Boshqa kontekstdagi iborani yozing',text:mask(sourceOrPractice(w,402),w.w)};
+      if(n===2)return{label:w.sampleAnswerSource?'Sample answerdan iborani yozing':'Boshqa kontekstdagi iborani yozing',text:mask(sourceOrPractice(w,402),w.w)};
       return{label:'Harf yordami bilan so‘z yoki iborani yozing',text:String(w.u||'')+' · '+String(w.w||'').split(/\s+/).map(x=>x.charAt(0).toUpperCase()+'…').join(' ')};
     };
 
     gameChoicePrompt=(w,mode,index)=>{
       const base=mode==='rush'?520:510;
       const n=hash(String(w.id??w.w)+'|'+mode+'|'+index)%3;
-      if(n===0)return{reverse:false,label:'Kontekstdagi so‘z yoki iboraning ma’nosini toping',text:sourceOrPractice(w,base+(index%17))};
+      if(n===0)return{reverse:false,label:w.sampleAnswerSource?'Sample answerdagi iboraning ma’nosini toping':'Kontekstdagi so‘z yoki iboraning ma’nosini toping',text:sourceOrPractice(w,base+(index%17))};
       if(n===1)return{reverse:true,label:'Qaysi inglizcha so‘z yoki ibora shu ma’noga mos?',text:w.u};
-      return{reverse:false,label:'Bu yangi misolda ishlatilgan iboraning ma’nosi qaysi?',text:sourceOrPractice(w,base+31+(index%19))};
+      return{reverse:false,label:w.sampleAnswerSource?'Sample answerdagi iboraning tarjimasini toping':'Bu yangi misolda ishlatilgan iboraning ma’nosi qaysi?',text:sourceOrPractice(w,base+31+(index%19))};
     };
 
     const oldCardMarkup=cardMarkup;
