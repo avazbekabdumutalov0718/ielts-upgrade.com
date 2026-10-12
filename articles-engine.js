@@ -42,7 +42,7 @@ function articleVisual(a){
 }
 async function applyReviewedMCQ(){
  try{
-  const response=await fetch('articles-mcq-reviewed.json?v=20261013-source-reviewed-1');
+  const response=await fetch('articles-mcq-reviewed.json?v=20261013-full-review-v2');
   if(!response.ok)return;
   const json=await response.json();
   for(const article of db){
@@ -52,6 +52,8 @@ async function applyReviewedMCQ(){
    article.questions=article.questions||{tf:[],mcq:[]};
    article.questions.mcq=verified;
    article.mcqReviewed=true;
+   article.mcqOcrLimited=verified.some(q=>q.reviewStatus==='source-ocr-limited');
+   if(!article.mcqOcrLimited)article.quizQuality=true;
   }
  }catch(e){console.warn('Articles reviewed questions could not load',e)}
 }
@@ -127,7 +129,7 @@ function understandingQuizNotice(){
 function questionMarkup(){
  let q=active.questions||{tf:[],mcq:[]}, tf=q.tf||[],mc=q.mcq||[];
  if(mc.length!==5||!mc.every(isUnderstandingMCQ))return understandingQuizNotice();
- return '<section class="ar-questions"><h2>10 reading comprehension questions</h2><p>5 True/False statements and 5 multiple-choice checks. These questions were automatically generated from the source text; check the displayed evidence.</p>'+
+ return '<section class="ar-questions"><h2>10 reading comprehension questions</h2><p>5 True/False statements and 5 multiple-choice checks. Questions test understanding, author\'s view, evidence and inference. Review the source evidence after submitting.</p>'+
  '<div class="ar-question-group"><h3>True / False</h3>'+tf.map((x,i)=>'<div class="ar-question"><p><b>'+(i+1)+'.</b> '+E(x.text)+'</p><label><input type="radio" name="tf-'+i+'" value="true" '+(chosenAnswers['tf'+i]==='true'?'checked':'')+'> True</label><label><input type="radio" name="tf-'+i+'" value="false" '+(chosenAnswers['tf'+i]==='false'?'checked':'')+'> False</label></div>').join('')+'</div>'+
  '<div class="ar-question-group"><h3>Multiple choice</h3>'+mc.map((x,i)=>'<div class="ar-question"><p><b>'+(i+6)+'.</b> '+E(x.text)+'</p>'+(x.options||[]).map((o,j)=>'<label><input type="radio" name="mc-'+i+'" value="'+j+'" '+(chosenAnswers['mc'+i]===String(j)?'checked':'')+'> '+E(o)+'</label>').join('')+'</div>').join('')+'</div><button id="ar-grade" class="ar-primary">Check answers</button><div id="ar-score"></div></section>';
 }
@@ -135,7 +137,7 @@ function renderArticle(){
  let r=rec();return '<section class="ar-shell ar-study"><button id="ar-back" class="ar-back">← All articles</button><div class="ar-studytitle">'+formatLevel(active.level)+' <small>'+(active.kind==='magazine'?'NEW SCIENTIST MAGAZINE':'ARTICLE')+' · '+E(active.pages||1)+' pages</small><h1>'+sanitizeTitle(active.title)+'</h1></div>'+stepper()+
  '<div class="ar-stage-info"><h2>Step '+stage+' / 5 · '+stageNames[stage-1]+'</h2><p>'+stageText()+'</p>'+(stage>=3?'<button type="button" id="ar-export-pdf" class="ar-primary">⬇ Download saved words PDF (English only)</button><span class="ar-export-count"> · '+(rec().cart||[]).length+' saved</span>':'')+'</div>'+
  (active.sourceQuality?'<p class="ar-warning">Eslatma: ushbu manbaning ayrim sahifalari skanerlangan yoki PDF ustunlari aralash ajratilgan. Matn va testlar asl PDF bilan qo‘shimcha tekshirilmoqda.</p>':'')+
- (stage===5&&!active.quizQuality?'<p class="ar-warning">Ushbu testlar avtomatik tuzilgan, savollar hali tahririy tekshiruvdan o‘tmagan. Dalilni asl manba bilan solishtiring.</p>':'')+
+ (stage===5&&!active.quizQuality?'<p class="ar-warning">Manbaning ayrim joylari OCR orqali noto‘g‘ri ajratilgan bo‘lishi mumkin. Savol dalillarini asl PDF bilan tekshiring.</p>':'')+
  (stage===5&&(active.collocations||[]).some(c=>!c.u&&!localText(c.w))?'<p class="ar-warning">Ayrim collocationlarning tarjimasi hali tayyor emas. O‘yinlarga faqat tasdiqlangan tarjimali iboralar kiritiladi.</p>':'')+
  (stage===5?speedMarkup():'')+readingMarkup()+
  (stage===3?gateMarkup():'')+(stage===2?'<div id="ar-marker" hidden aria-hidden="true">🖍️</div>':'')+(stage>=4?cartMarkup():'')+
