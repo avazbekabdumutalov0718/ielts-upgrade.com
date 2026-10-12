@@ -40,6 +40,21 @@ function articleVisual(a){
  else if(/physics|energy|chemical|research|scientist|experiment/.test(name)){icon='🔬';category='Science'}
  return '<span class="ar-cover" role="img" aria-label="'+E(category)+' illustration"><span class="ar-cover-pattern" aria-hidden="true">◌</span><span class="ar-cover-icon" aria-hidden="true">'+icon+'</span><span class="ar-cover-category">'+E(category)+'</span></span>';
 }
+async function applyReviewedMCQ(){
+ try{
+  const response=await fetch('articles-mcq-reviewed.json?v=20261013-source-reviewed-1');
+  if(!response.ok)return;
+  const json=await response.json();
+  for(const article of db){
+   const verified=json?.articles?.[article.id];
+   if(!Array.isArray(verified)||verified.length!==5)continue;
+   if(!verified.every(q=>typeof q.text==='string'&&q.options?.length===4&&Number.isInteger(q.answer)&&q.answer>=0&&q.answer<4&&q.evidence))continue;
+   article.questions=article.questions||{tf:[],mcq:[]};
+   article.questions.mcq=verified;
+   article.mcqReviewed=true;
+  }
+ }catch(e){console.warn('Articles reviewed questions could not load',e)}
+}
 function buildIndex(){
  const magazine=db.filter(a=>a.kind==='magazine'),articles=db.filter(a=>a.kind==='article');
  const cards=arr=>arr.map(a=>{const p=progress[a.id]||{};return '<button class="ar-article" data-open="'+E(a.id)+'">'+articleVisual(a)+'<span class="ar-card-row">'+formatLevel(a.level)+'<small>'+E(a.words||0)+' words · '+E(a.pages||1)+' pages</small></span><strong>'+sanitizeTitle(a.title)+'</strong><span class="ar-article-footer">'+(p.complete?'✓ Completed':p.stage?'Continue step '+p.stage:'Start reading')+' <span aria-hidden="true">→</span></span></button>'}).join('');
@@ -436,6 +451,6 @@ document.addEventListener('mousemove',e=>{mouse={x:e.clientX,y:e.clientY}}, {pas
 document.addEventListener('click',e=>{const nav=e.target.closest('#primaryNav [data-view="articles"]');if(!nav)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();history.pushState(null,'','#articles');activate()},true);
 document.addEventListener('click',e=>{if(tip&&!e.target.closest('.ar-tooltip')&&!e.target.closest('[data-word]')&&!e.target.closest('[data-colloc]'))closeTip()},true);
 window.addEventListener('popstate',()=>{if(location.hash.startsWith('#articles'))activate()});
-document.addEventListener('DOMContentLoaded',async()=>{await initData();if(location.hash.startsWith('#articles'))setTimeout(activate,400)});
+document.addEventListener('DOMContentLoaded',async()=>{await initData();await applyReviewedMCQ();if(location.hash.startsWith('#articles'))setTimeout(activate,400)});
 window.VividArticles={open:activate,importData:arr=>{db=cleanContent(arr);activate()},getLibrary:()=>db};
 })();
