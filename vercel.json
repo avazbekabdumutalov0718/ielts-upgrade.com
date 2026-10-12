@@ -23,5 +23,32 @@
       ]
     }
   ],
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "redirects": [
+    {
+      "source": "/academy/reading-passages/:path*",
+      "destination": "/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/academy/imported-listening/:path*",
+      "destination": "/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/academy/:path*",
+      "destination": "/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/reading-passages/:path*",
+      "destination": "/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/imported-listening/:path*",
+      "destination": "/:path*",
+      "permanent": false
+    }
+  ]
 }
