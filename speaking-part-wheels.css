@@ -44,3 +44,12 @@
 .spw-catalog li[role="button"]{cursor:pointer;transition:background .16s ease,color .16s ease}
 .spw-catalog li[role="button"]:hover{background:#efe8ff;color:#503391}
 .spw-catalog li[role="button"]:focus-visible{outline:3px solid #a88af1;outline-offset:2px;background:#efe8ff}
+
+/* Topic discovery: search never hides slices from the actual baraban. */
+.spw-search-label{display:block;font-weight:800;font-size:12px;color:#58467e;margin:16px 0 7px}
+.spw-search{width:100%;border:1px solid #d9ccea;border-radius:10px;background:#fff;color:#30234e;font:inherit;font-size:14px;padding:12px 13px;outline:none}
+.spw-search:focus{border-color:#7952d6;box-shadow:0 0 0 3px #7952d61e}
+.spw-filter-status{font-size:12px;color:#675a7b;margin:7px 0 0}
+.spw-catalog li[hidden]{display:none}
+.spw-disc svg g[data-topic-index]{cursor:pointer}
+.spw-disc svg g[data-topic-index]:hover path,.spw-disc svg g[data-topic-index]:hover circle{filter:brightness(1.2)}
