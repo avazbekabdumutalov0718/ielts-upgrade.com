@@ -42,11 +42,11 @@ function buildIndex(){
 }
 function ensureHost(){if(!host())return;host().innerHTML=active?renderArticle():buildIndex();wire();}
 function tokenMarkup(par,pi){
- const clickable=stage===2||stage===3;
+ const clickable=true;
  if(!clickable)return E(par);
  const rx=/[A-Za-z]+(?:[’'-][A-Za-z]+)*/g;let out='',pos=0,m,j=0;
- while((m=rx.exec(par))){out+=E(par.slice(pos,m.index));const tag=stage===3?'button':'span',attrs=stage===3?'type="button" tabindex="0" data-word="'+E(m[0])+'"':'';
- out+='<'+tag+' '+attrs+' class="ar-word'+(stage===2&&rec().highlights.includes(pi+':'+j)?' ar-highlighted':'')+'" data-hkey="'+pi+':'+j+'">'+E(m[0])+'</'+tag+'>';pos=rx.lastIndex;j++}
+ while((m=rx.exec(par))){out+=E(par.slice(pos,m.index));const tag='button',attrs='type="button" tabindex="0" data-word="'+E(m[0])+'"';
+ out+='<'+tag+' '+attrs+' class="ar-word'+(rec().highlights.includes(pi+':'+j)?' ar-highlighted':'')+'" data-hkey="'+pi+':'+j+'">'+E(m[0])+'</'+tag+'>';pos=rx.lastIndex;j++}
  return out+E(par.slice(pos));
 }
 function listChunks(){const all=active?.body||[];const size=active.kind==='magazine'?14:40;const max=Math.max(0,Math.ceil(all.length/size)-1);block=Math.min(block,max);return {start:block*size,end:Math.min(all.length,(block+1)*size),pages:max+1}}
@@ -84,7 +84,7 @@ function questionMarkup(){
 }
 function renderArticle(){
  let r=rec();return '<section class="ar-shell ar-study"><button id="ar-back" class="ar-back">← All articles</button><div class="ar-studytitle">'+formatLevel(active.level)+' <small>'+(active.kind==='magazine'?'NEW SCIENTIST MAGAZINE':'ARTICLE')+' · '+E(active.pages||1)+' pages</small><h1>'+sanitizeTitle(active.title)+'</h1></div>'+stepper()+
- '<div class="ar-stage-info"><h2>Step '+stage+' / 5 · '+stageNames[stage-1]+'</h2><p>'+stageText()+'</p></div>'+
+ '<div class="ar-stage-info"><h2>Step '+stage+' / 5 · '+stageNames[stage-1]+'</h2><p>'+stageText()+'</p><button type="button" id="ar-export-pdf" class="ar-primary">⬇ Download saved words PDF (English only)</button><span class="ar-export-count"> · '+(rec().cart||[]).length+' saved</span></div>'+
  (active.sourceQuality?'<p class="ar-warning">Eslatma: ushbu manbaning ayrim sahifalari skanerlangan yoki PDF ustunlari aralash ajratilgan. Matn va testlar asl PDF bilan qo‘shimcha tekshirilmoqda.</p>':'')+
  (stage===5&&!active.quizQuality?'<p class="ar-warning">Ushbu testlar avtomatik tuzilgan, savollar hali tahririy tekshiruvdan o‘tmagan. Dalilni asl manba bilan solishtiring.</p>':'')+
  (stage===5&&(active.collocations||[]).some(c=>!c.u&&!localText(c.w))?'<p class="ar-warning">Ayrim collocationlarning tarjimasi hali tayyor emas. O‘yinlarga faqat tasdiqlangan tarjimali iboralar kiritiladi.</p>':'')+
@@ -94,25 +94,66 @@ function renderArticle(){
  '<div class="ar-stage-controls"><button id="ar-previous" '+(stage===1?'disabled':'')+'>← Previous stage</button><button id="ar-next" class="ar-primary" '+(stage===3&&!rec().gateDone?'disabled':'')+(stage===5?' hidden':'')+'>Next stage →</button></div></section>';
 }
 function closeTip(){if(tip){tip.remove();tip=null}}
+function toggleHighlight(el){
+ const key=el?.dataset?.hkey;
+ if(!key)return;
+ const list=rec().highlights||(rec().highlights=[]);
+ const idx=list.indexOf(key);
+ if(idx>=0){list.splice(idx,1);el.classList.remove('ar-highlighted');notify('Highlight removed')}
+ else{list.push(key);el.classList.add('ar-highlighted');notify('Word highlighted')}
+ persist();
+}
+function addEnglishWord(w,el,collocation=false){
+ const term=String(w||'').trim();
+ if(!term)return;
+ const bag=rec().cart||(rec().cart=[]);
+ if(bag.some(c=>norm(c.w)===norm(term))){notify('This word is already saved');return}
+ const meaning=localText(term)||ARTICLE_CORE_TRANSLATIONS[norm(term)]||'';
+ bag.push({w:term,u:meaning,e:collocation?el?.dataset?.example||'':el?.closest('.ar-paragraph')?.textContent?.slice(0,270)||''});
+ if(stage===3){rec().gateDone=false;rec().gateScores=[];gateScores=[]}
+ persist();notify(term+' saved to Words');
+ if(stage>=4)ensureHost();
+ else if(stage===3){const g=qs('.ar-gate');if(g){g.outerHTML=gateMarkup();wireGate()}}
+}
 function showTip(el,w,translationValue,collocation=false){
- closeTip();const ok=Boolean(String(translationValue||'').trim());
+ closeTip();
  tip=document.createElement('aside');tip.className='ar-tooltip';
- tip.innerHTML='<strong>'+E(w)+'</strong><p>'+E(ok?translationValue:'Bu so‘zning o‘zbekcha tarjimasi hali tekshirilmagan.')+'</p>'+
- (ok?'<button class="ar-primary" id="ar-add-word">🧺 Savatga qo‘shish</button>':'<small>Tarjima tayyor bo‘lgach, bu so‘zni savatga qo‘shish mumkin.</small>');
+ tip.innerHTML='<strong>'+E(w)+'</strong><div class="ar-word-actions">'+
+ '<button type="button" id="ar-highlight-word">🖍 Highlight / unhighlight</button>'+
+ '<button type="button" class="ar-primary" id="ar-add-word">＋ Add to Words</button></div>';
  document.body.appendChild(tip);positionTip(el);
- if(!ok)return;
- qs('#ar-add-word',tip)?.addEventListener('click',()=>{
-  const bag=rec().cart||(rec().cart=[]);
-  if(!bag.some(c=>norm(c.w)===norm(w))){
-    bag.push({w,u:translationValue,e:collocation?el.dataset.example||'':el.closest('.ar-paragraph')?.textContent?.slice(0,270)||''});
-    // When the learner adds new words, previous test results no longer
-    // cover the full basket and should not silently unlock the next stage.
-    if(stage===3){rec().gateDone=false;rec().gateScores=[];gateScores=[];}
-    persist();notify(w+' savatga qo‘shildi');
-  }else notify('Bu so‘z savatda mavjud');
-  if(stage>=4)ensureHost();else if(stage===3){const g=qs('.ar-gate');if(g)g.outerHTML=gateMarkup();wireGate()}
-  closeTip();
- });
+ const high=qs('#ar-highlight-word',tip);if(!el?.dataset?.hkey)high.hidden=true;
+ high?.addEventListener('click',()=>{toggleHighlight(el);closeTip()});
+ qs('#ar-add-word',tip)?.addEventListener('click',()=>{addEnglishWord(w,el,collocation);closeTip()});
+}
+function exportEnglishPDF(){
+ const list=[...new Map((rec().cart||[]).filter(x=>x&&x.w).map(x=>[norm(x.w),String(x.w).trim()])).values()];
+ if(!list.length){notify('Add English words first');return}
+ const title=String(active?.title||'Article').replace(/[^A-Za-z0-9 -]/g,'').trim();
+ const filename='VIVID-IELTS-'+String(active?.id||'article').replace(/[^A-Za-z0-9_-]/g,'-')+'-words.pdf';
+ const create=()=>{
+  if(!window.jspdf?.jsPDF)return false;
+  const pdf=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+  pdf.setFont('helvetica','bold');pdf.setFontSize(17);pdf.text('VIVID IELTS - My English Words',15,18);
+  pdf.setFont('helvetica','normal');pdf.setFontSize(10);
+  const caption=pdf.splitTextToSize(title,180);pdf.text(caption,15,26);
+  let y=30+caption.length*5;
+  list.forEach((word,i)=>{const lines=pdf.splitTextToSize((i+1)+'. '+word,178);const h=lines.length*6;if(y+h>283){pdf.addPage();y=18}pdf.text(lines,16,y);y+=h+2});
+  pdf.save(filename);notify('PDF downloaded');return true;
+ };
+ if(create())return;
+ const js=document.createElement('script');
+ js.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
+ js.onload=()=>{if(!create())printEnglishWords(list,title)};
+ js.onerror=()=>printEnglishWords(list,title);
+ document.head.appendChild(js);
+}
+function printEnglishWords(list,title){
+ const w=window.open('','_blank');
+ if(!w){notify('Enable pop-ups to save PDF');return}
+ const rows=list.map((word,i)=>'<li>'+E(word)+'</li>').join('');
+ w.document.write('<!doctype html><html><head><title>VIVID IELTS English Words</title><style>body{font:15px Arial;padding:28px;color:#222}h1{font-size:24px}li{padding:5px 0}@page{size:A4;margin:18mm}</style></head><body><h1>VIVID IELTS - My English Words</h1><p>'+E(title)+'</p><ol>'+rows+'</ol></body></html>');
+ w.document.close();w.focus();w.print();
 }
 function positionTip(el){if(!tip)return;let x=mouse.x||el?.getBoundingClientRect().left||0,y=mouse.y||el?.getBoundingClientRect().bottom||0;x=Math.max(10,Math.min(window.innerWidth-295,x+10));y=Math.max(10,Math.min(window.innerHeight-175,y+14));tip.style.left=x+'px';tip.style.top=y+'px'}
 async function clickWord(button,w,isColloc){mouse.x=button.getBoundingClientRect().left;mouse.y=button.getBoundingClientRect().bottom;showTip(button,w,localText(w),isColloc);let translated=await translate(w);if(!tip)return;showTip(button,w,translated,isColloc)}
@@ -290,7 +331,8 @@ function wireArticle(){
   area?.addEventListener('mouseleave',()=>{const marker=qs('#ar-marker');if(marker)marker.hidden=true});
   area?.addEventListener('mouseup',event=>{mouse={x:event.clientX,y:event.clientY};const sel=window.getSelection();if(!sel||sel.isCollapsed)return;let matches=qsa('.ar-word',area).filter(el=>sel.containsNode(el,true));if(!matches.length)return;const list=rec().highlights||[];for(let el of matches){let key=el.dataset.hkey;if(!list.includes(key))list.push(key);el.classList.add('ar-highlighted')}rec().highlights=list;persist();sel.removeAllRanges();notify(matches.length+' words highlighted')});
  }
- if(stage===3)qsa('[data-word]').forEach(b=>b.addEventListener('click',()=>clickWord(b,b.dataset.word,false)));
+ qsa('[data-word]').forEach(b=>b.addEventListener('click',()=>clickWord(b,b.dataset.word,false)));
+ qs('#ar-export-pdf')?.addEventListener('click',exportEnglishPDF);
  if(stage>=4)qsa('[data-remove]').forEach(b=>b.addEventListener('click',()=>{rec().cart.splice(Number(b.dataset.remove),1);persist();ensureHost()}));
  if(stage===3)wireGate();
  if(stage===5){
