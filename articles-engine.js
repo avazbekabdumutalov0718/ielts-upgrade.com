@@ -5,7 +5,7 @@ const qs=(s,root=document)=>root.querySelector(s), qsa=(s,root=document)=>[...ro
 const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=v=>String(v||'').toLowerCase().replace(/[’‘]/g,"'").trim();
 const STORE='vivid_articles_progress_v2', DICT='vivid_articles_translations_v2', CACHE='vivid_articles_import_v1';
-const levels=['B1','B2','C1','C2'];const stageNames=['Read','Highlight','Translate','Review','Speed reading'];
+const levels=['B1','B2','C1','C2'];const stageNames=['Read','Highlight','Words','Review','Speed reading'];
 const gameTitles=['Flashcards','Match','Translation typing','Gap fill','Listen & choose','Multiple choice','Speed rush'];
 let db=[],glossary={},translations={},active=null,stage=1,block=0,kind='all',level='all',query='',tip=null,mouse={x:0,y:0},stopwatch=0,running=false,ticker=null,activeGame=null,gateIndex=-1,gateScores=[],chosenAnswers={};
 let progress={};
@@ -87,7 +87,7 @@ function stageText(){
 function stepper(){return '<div class="ar-steps">'+stageNames.map((n,i)=>'<button class="'+(stage===i+1?'current ':'')+(i+1<=(rec().stage||1)?'unlocked':'')+'" data-stage="'+(i+1)+'"><b>'+(i+1)+'</b><span>'+n+'</span></button>').join('')+'</div>'}
 function gateMarkup(){
  const basket=rec().cart||[];
- if(!basket.length)return '<p class="ar-warning">Select at least one word in Step 3 before the four practice games.</p>';
+ if(!basket.length)return '<section class="ar-gate"><h3>Vocabulary practice</h3><p>Select English words from the passage to practise, or continue to Step 4.</p></section>';
  const list=['Match English to Uzbek','Choose the right translation','Type the English phrase','Complete a sample sentence','Final word-basket quiz'];
  return '<section class="ar-gate"><h3>Four practice games + vocabulary quiz before Step 4</h3><p>Finish four different games and a final vocabulary quiz using the words in your own basket.</p><div class="ar-gate-list">'+list.map((s,i)=>'<button data-gate="'+i+'" '+(i>gateScores.length?'disabled':'')+'>'+(i<gateScores.length?'✓ ':'')+(i+1)+'. '+s+'</button>').join('')+'</div><div id="ar-gate-play"></div>'+(gateScores.length===5||rec().gateDone?'<button class="ar-primary" id="ar-unlock">Continue to Step 4 →</button>':'')+'</section>';
 }
@@ -115,7 +115,7 @@ function renderArticle(){
  (stage===5?speedMarkup():'')+readingMarkup()+
  (stage===3?gateMarkup():'')+(stage===2?'<div id="ar-marker" hidden aria-hidden="true">🖍️</div>':'')+(stage>=4?cartMarkup():'')+
  (stage===5?'<section class="ar-summary"><h2>Write your own summary</h2><p>Explain the main idea, evidence and conclusion in English.</p><textarea id="ar-summary" rows="7" placeholder="The article explores...">'+E(r.summary||'')+'</textarea><span id="ar-summary-count">'+wordsOf(r.summary||'').length+' words</span></section>'+collocMarkup()+gamesMarkup()+questionMarkup():'')+
- '<div class="ar-stage-controls"><button id="ar-previous" '+(stage===1?'disabled':'')+'>← Previous stage</button><button id="ar-next" class="ar-primary" '+(stage===3&&!rec().gateDone?'disabled':'')+(stage===5?' hidden':'')+'>Next stage →</button></div></section>';
+ '<div class="ar-stage-controls"><button id="ar-previous" '+(stage===1?'disabled':'')+'>← Previous stage</button><button id="ar-next" class="ar-primary" '+(stage===5?' hidden':'')+'>Next stage →</button></div></section>';
 }
 function closeTip(){if(tip){tip.remove();tip=null}}
 function toggleHighlight(el){
@@ -194,8 +194,8 @@ function setStage(next){
  if(activeGame?.timer)clearInterval(activeGame.timer);
  qs('#ar-rush-time')?.remove();
  if(next<1||next>5)return;
- if(next>Math.max(stage,rec().stage||1))return;
- if(stage===3&&next===4&&!rec().gateDone){notify('Finish the four basket games and vocabulary quiz first.');return}
+ if(next>Math.max(stage+1,rec().stage||1))return;
+ // Vocabulary games remain available, but never trap a reader in Step 3.
  closeTip();stage=next;block=0;running=false;clearInterval(ticker);stopwatch=0;rec().stage=Math.max(rec().stage||1,next);persist();ensureHost();host()?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function startArticle(id){
@@ -379,7 +379,7 @@ function wireArticle(){
  qs('#ar-back')?.addEventListener('click',()=>{if(activeGame?.timer)clearInterval(activeGame.timer);qs('#ar-rush-time')?.remove();active=null;closeTip();running=false;clearInterval(ticker);history.replaceState(null,'','#articles');ensureHost()});
  qsa('[data-stage]').forEach(b=>b.onclick=()=>setStage(Number(b.dataset.stage)));
  qs('#ar-previous')?.addEventListener('click',()=>setStage(stage-1));
- qs('#ar-next')?.addEventListener('click',()=>{if(stage!==3||rec().gateDone)setStage(stage+1)});
+ qs('#ar-next')?.addEventListener('click',()=>setStage(stage+1));
  qsa('[data-page]').forEach(b=>b.onclick=()=>{block+=Number(b.dataset.page);ensureHost()});
  if(stage===2){
   const area=qs('#ar-original');area?.addEventListener('mousemove',event=>{mouse={x:event.clientX,y:event.clientY};const marker=qs('#ar-marker');if(marker){marker.style.left=(event.clientX+13)+'px';marker.style.top=(event.clientY+13)+'px';marker.hidden=false}if(tip)positionTip(event.target)});
