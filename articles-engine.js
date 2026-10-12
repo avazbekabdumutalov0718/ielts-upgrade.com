@@ -20,7 +20,7 @@ function formatLevel(v){return '<span class="ar-level ar-'+E(v||'B2')+'">'+E(v||
 function wordsOf(s){return String(s||'').match(/[A-Za-z]+(?:[’'-][A-Za-z]+)*/g)||[]}
 function sanitizeTitle(t){return E(String(t||'').replace(/@\w+(?:[-_]\w+)*/g,'').replace(/\s+/g,' ').trim())}
 function localText(text){let w=norm(text).replace(/^[^a-z]+|[^a-z]+$/g,'');if(!w)return '';if(translations[w])return translations[w];if(glossary[w])return glossary[w];let bases=[w.replace(/ies$/,'y'),w.replace(/ing$/,''),w.replace(/ing$/,'e'),w.replace(/ed$/,''),w.replace(/ed$/,'e'),w.replace(/es$/,''),w.replace(/s$/,'')];for(const b of bases)if(b&&b.length>2&&(glossary[b]||translations[b]))return translations[b]||glossary[b];return ''}
-async function translate(w){let k=norm(w);let t=localText(k);if(t)return t;try{const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(w.slice(0,350))+'&langpair=en%7Cuz');if(!r.ok)throw Error('translation unavailable');let j=await r.json();const value=String(j.responseData?.translatedText||'').trim();if(!value||norm(value)===norm(w)||/MYMEMORY WARNING/i.test(value))throw Error('untranslated');translations[k]=value;try{localStorage.setItem(DICT,JSON.stringify(translations))}catch{}return value}catch{return ''}}
+async function translate(w){let k=norm(w);let t=localText(k);if(t)return t;try{const r=await fetch('/api/article-translate?word='+encodeURIComponent(w.slice(0,120)));if(!r.ok)throw Error('translation unavailable');let j=await r.json();const value=String(j.translations?.[w]||'').trim();if(!value||norm(value)===norm(w))throw Error('untranslated');translations[k]=value;try{localStorage.setItem(DICT,JSON.stringify(translations))}catch{}return value}catch{return ''}}
 function cleanContent(rows){return Array.isArray(rows)?rows.filter(x=>x&&typeof x==='object'&&Array.isArray(x.body)).map(x=>({...x,title:String(x.title||'Untitled'),kind:x.kind==='magazine'?'magazine':'article',level:levels.includes(x.level)?x.level:'B2'})):[]}
 async function initData(){
  try{const r=await fetch('articles-glossary.json?v=1');if(r.ok)glossary=(await r.json()).translations||{}}catch{}
@@ -68,7 +68,7 @@ function gateMarkup(){
 }
 function collocMarkup(){
  let words=active.collocations||[];
- return '<section class="ar-collocations"><h2>Speaking & Writing · 15 expressions</h2><p>Expressions extracted from the actual article text. Click one to check its meaning or add it to your study basket.</p><div class="ar-colloc-grid">'+words.map((c,i)=>'<button data-colloc="'+i+'"><b>'+E(c.w)+'</b><small>Example from article: '+E((c.e||'').slice(0,145))+'</small></button>').join('')+'</div><button data-game="5" class="ar-outline">Practise collocation quiz →</button></section>';
+ return '<section class="ar-collocations"><h2>Speaking & Writing · '+words.length+' expressions</h2><p>Expressions extracted from the actual article text. Click one to check its meaning or add it to your study basket.</p><div class="ar-colloc-grid">'+words.map((c,i)=>'<button data-colloc="'+i+'"><b>'+E(c.w)+'</b><span class="ar-colloc-meaning" data-colloc-meaning="'+i+'">'+E(c.u||localText(c.w)||'Tarjima yuklanmoqda…')+'</span><small>Example from article: '+E((c.e||'').slice(0,145))+'</small></button>').join('')+'</div><button data-game="5" class="ar-outline">Practise collocation quiz →</button></section>';
 }
 function gamesMarkup(){
  const n=(rec().cart?.length||0)+(active.collocations?.length||0);
@@ -85,7 +85,7 @@ function renderArticle(){
  let r=rec();return '<section class="ar-shell ar-study"><button id="ar-back" class="ar-back">← All articles</button><div class="ar-studytitle">'+formatLevel(active.level)+' <small>'+(active.kind==='magazine'?'NEW SCIENTIST MAGAZINE':'ARTICLE')+' · '+E(active.pages||1)+' pages</small><h1>'+sanitizeTitle(active.title)+'</h1></div>'+stepper()+
  '<div class="ar-stage-info"><h2>Step '+stage+' / 5 · '+stageNames[stage-1]+'</h2><p>'+stageText()+'</p></div>'+
  (stage===5?speedMarkup():'')+readingMarkup()+
- (stage===3?gateMarkup():'')+(stage>=4?cartMarkup():'')+
+ (stage===3?gateMarkup():'')+(stage===2?'<div id="ar-marker" hidden aria-hidden="true">🖍️</div>':'')+(stage>=4?cartMarkup():'')+
  (stage===5?'<section class="ar-summary"><h2>Write your own summary</h2><p>Explain the main idea, evidence and conclusion in English.</p><textarea id="ar-summary" rows="7" placeholder="The article explores...">'+E(r.summary||'')+'</textarea><span id="ar-summary-count">'+wordsOf(r.summary||'').length+' words</span></section>'+collocMarkup()+gamesMarkup()+questionMarkup():'')+
  '<div class="ar-stage-controls"><button id="ar-previous" '+(stage===1?'disabled':'')+'>← Previous stage</button><button id="ar-next" class="ar-primary" '+(stage===3&&gateScores.length<4?'disabled':'')+(stage===5?' hidden':'')+'>Next stage →</button></div></section>';
 }
@@ -103,7 +103,24 @@ function showTip(el,w,translationValue,collocation=false){
  });
 }
 function positionTip(el){if(!tip)return;let x=mouse.x||el?.getBoundingClientRect().left||0,y=mouse.y||el?.getBoundingClientRect().bottom||0;x=Math.max(10,Math.min(window.innerWidth-295,x+10));y=Math.max(10,Math.min(window.innerHeight-175,y+14));tip.style.left=x+'px';tip.style.top=y+'px'}
-async function clickWord(button,w,isColloc){mouse.x=button.getBoundingClientRect().left;mouse.y=button.getBoundingClientRect().bottom;showTip(button,w,'Loading translation...',isColloc);let translated=await translate(w);if(!tip)return;showTip(button,w,translated,isColloc)}
+async function clickWord(button,w,isColloc){mouse.x=button.getBoundingClientRect().left;mouse.y=button.getBoundingClientRect().bottom;showTip(button,w,localText(w),isColloc);let translated=await translate(w);if(!tip)return;showTip(button,w,translated,isColloc)}
+async function hydrateCollocations(){
+ if(!active||stage!==5)return;
+ const entries=active.collocations||[];
+ const wanted=entries.filter(c=>!c.u&&!localText(c.w)).slice(0,15);
+ for(const e of entries)if(!e.u&&localText(e.w))e.u=localText(e.w);
+ if(wanted.length) {
+  try{
+   const r=await fetch('/api/article-translate?words='+encodeURIComponent(wanted.map(c=>c.w).join('|')));
+   if(r.ok){const data=await r.json();for(const e of wanted){const val=String(data.translations?.[e.w]||'').trim();if(val){e.u=val;translations[norm(e.w)]=val}}}
+   try{localStorage.setItem(DICT,JSON.stringify(translations))}catch{}
+  }catch{}
+ }
+ for(let i=0;i<entries.length;i++){
+  const n=qs('[data-colloc-meaning="'+i+'"]');
+  if(n)n.textContent=entries[i].u||localText(entries[i].w)||'Tarjimani ko‘rish uchun bosing';
+ }
+}
 function setStage(next){
  if(next<1||next>5)return;
  if(next>Math.max(stage,rec().stage||1))return;
@@ -155,13 +172,15 @@ function wireArticle(){
  qs('#ar-next')?.addEventListener('click',()=>{if(stage!==3||gateScores.length===4)setStage(stage+1)});
  qsa('[data-page]').forEach(b=>b.onclick=()=>{block+=Number(b.dataset.page);ensureHost()});
  if(stage===2){
-  const area=qs('#ar-original');area?.addEventListener('mousemove',event=>{mouse={x:event.clientX,y:event.clientY};if(tip)positionTip(event.target)});
+  const area=qs('#ar-original');area?.addEventListener('mousemove',event=>{mouse={x:event.clientX,y:event.clientY};const marker=qs('#ar-marker');if(marker){marker.style.left=(event.clientX+13)+'px';marker.style.top=(event.clientY+13)+'px';marker.hidden=false}if(tip)positionTip(event.target)});
+  area?.addEventListener('mouseleave',()=>{const marker=qs('#ar-marker');if(marker)marker.hidden=true});
   area?.addEventListener('mouseup',event=>{mouse={x:event.clientX,y:event.clientY};const sel=window.getSelection();if(!sel||sel.isCollapsed)return;let matches=qsa('.ar-word',area).filter(el=>sel.containsNode(el,true));if(!matches.length)return;const list=rec().highlights||[];for(let el of matches){let key=el.dataset.hkey;if(!list.includes(key))list.push(key);el.classList.add('ar-highlighted')}rec().highlights=list;persist();sel.removeAllRanges();notify(matches.length+' words highlighted')});
  }
  if(stage===3)qsa('[data-word]').forEach(b=>b.addEventListener('click',()=>clickWord(b,b.dataset.word,false)));
  if(stage>=4)qsa('[data-remove]').forEach(b=>b.addEventListener('click',()=>{rec().cart.splice(Number(b.dataset.remove),1);persist();ensureHost()}));
  if(stage===3)wireGate();
  if(stage===5){
+  hydrateCollocations();
   qs('#ar-summary')?.addEventListener('input',e=>{rec().summary=e.target.value;persist();qs('#ar-summary-count').textContent=wordsOf(e.target.value).length+' words'});
   const updateTimer=()=>{let display=qs('#ar-time');if(display)display.textContent=Math.floor(stopwatch/60)+':'+String(stopwatch%60).padStart(2,'0');let out=qs('#ar-wpm');if(out)out.textContent=(stopwatch?Math.round((active.words||0)/(stopwatch/60)):0)+' WPM*'};
   qs('#ar-timer')?.addEventListener('click',()=>{running=!running;qs('#ar-timer').textContent=running?'Pause':'Start';clearInterval(ticker);if(running)ticker=setInterval(()=>{stopwatch++;updateTimer()},1000)});
