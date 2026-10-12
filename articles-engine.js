@@ -86,6 +86,8 @@ function renderArticle(){
  let r=rec();return '<section class="ar-shell ar-study"><button id="ar-back" class="ar-back">← All articles</button><div class="ar-studytitle">'+formatLevel(active.level)+' <small>'+(active.kind==='magazine'?'NEW SCIENTIST MAGAZINE':'ARTICLE')+' · '+E(active.pages||1)+' pages</small><h1>'+sanitizeTitle(active.title)+'</h1></div>'+stepper()+
  '<div class="ar-stage-info"><h2>Step '+stage+' / 5 · '+stageNames[stage-1]+'</h2><p>'+stageText()+'</p></div>'+
  (active.sourceQuality?'<p class="ar-warning">Eslatma: ushbu manbaning ayrim sahifalari skanerlangan yoki PDF ustunlari aralash ajratilgan. Matn va testlar asl PDF bilan qo‘shimcha tekshirilmoqda.</p>':'')+
+ (stage===5&&!active.quizQuality?'<p class="ar-warning">Ushbu testlar avtomatik tuzilgan, savollar hali tahririy tekshiruvdan o‘tmagan. Dalilni asl manba bilan solishtiring.</p>':'')+
+ (stage===5&&(active.collocations||[]).some(c=>!c.u&&!localText(c.w))?'<p class="ar-warning">Ayrim collocationlarning tarjimasi hali tayyor emas. O‘yinlarga faqat tasdiqlangan tarjimali iboralar kiritiladi.</p>':'')+
  (stage===5?speedMarkup():'')+readingMarkup()+
  (stage===3?gateMarkup():'')+(stage===2?'<div id="ar-marker" hidden aria-hidden="true">🖍️</div>':'')+(stage>=4?cartMarkup():'')+
  (stage===5?'<section class="ar-summary"><h2>Write your own summary</h2><p>Explain the main idea, evidence and conclusion in English.</p><textarea id="ar-summary" rows="7" placeholder="The article explores...">'+E(r.summary||'')+'</textarea><span id="ar-summary-count">'+wordsOf(r.summary||'').length+' words</span></section>'+collocMarkup()+gamesMarkup()+questionMarkup():'')+
@@ -105,7 +107,7 @@ function showTip(el,w,translationValue,collocation=false){
     bag.push({w,u:translationValue,e:collocation?el.dataset.example||'':el.closest('.ar-paragraph')?.textContent?.slice(0,270)||''});
     // When the learner adds new words, previous test results no longer
     // cover the full basket and should not silently unlock the next stage.
-    rec().gateDone=false;rec().gateScores=[];gateScores=[];
+    if(stage===3){rec().gateDone=false;rec().gateScores=[];gateScores=[];}
     persist();notify(w+' savatga qo‘shildi');
   }else notify('Bu so‘z savatda mavjud');
   if(stage>=4)ensureHost();else if(stage===3){const g=qs('.ar-gate');if(g)g.outerHTML=gateMarkup();wireGate()}
