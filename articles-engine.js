@@ -100,8 +100,18 @@ function gamesMarkup(){
  return '<section class="ar-games"><h2>7 learning games · '+n+' expressions</h2><p>The same word basket and article collocations are used across all seven games.</p><div class="ar-game-grid">'+gameTitles.map((t,i)=>'<button data-game="'+i+'"><span>0'+(i+1)+'</span><strong>'+t+'</strong></button>').join('')+'</div><div id="ar-game-play"></div></section>';
 }
 function speedMarkup(){return '<section class="ar-speedbox"><h2>⏱ Speed reading</h2><p>Start the clock and read the section at a steady pace. The result is approximate words per minute.</p><div class="ar-speed-controls"><button id="ar-timer">'+(running?'Pause':'Start')+'</button><button id="ar-reset">Reset</button><strong id="ar-time">'+Math.floor(stopwatch/60)+':'+String(stopwatch%60).padStart(2,'0')+'</strong><strong id="ar-wpm">'+(stopwatch?Math.round((active.words||0)/(stopwatch/60)):0)+' WPM*</strong></div><small>*WPM estimates are meaningful only after you have read the whole article.</small></section>'}
+function isUnderstandingMCQ(q){
+ if(!q||!Array.isArray(q.options)||q.options.length!==4)return false;
+ const prompt=String(q.text||'').trim();
+ if(!prompt||/complete the exact statement|fill (?:in )?the blank|missing word|_____+|\\bwhich word\\b|exact phrase from the article/i.test(prompt))return false;
+ return /\\b(why|how|what|which|according to|main (?:idea|purpose|reason)|suggest|imply|infer|author|writer|conclusion|best describes|most likely|primary|view|attitude|argument|evidence)\\b/i.test(prompt);
+}
+function understandingQuizNotice(){
+ return '<section class="ar-questions"><h2>IELTS Reading · Understanding questions</h2><p>These questions should test main ideas, arguments, inference, author purpose and supporting evidence—not missing words.</p><p class="ar-warning">This article\'s existing multiple-choice questions are word-completion exercises, not verified IELTS comprehension questions. They have been hidden rather than presented as valid understanding tests. Editorial replacement is still required.</p></section>';
+}
 function questionMarkup(){
  let q=active.questions||{tf:[],mcq:[]}, tf=q.tf||[],mc=q.mcq||[];
+ if(mc.length!==5||!mc.every(isUnderstandingMCQ))return understandingQuizNotice();
  return '<section class="ar-questions"><h2>10 reading comprehension questions</h2><p>5 True/False statements and 5 multiple-choice checks. These questions were automatically generated from the source text; check the displayed evidence.</p>'+
  '<div class="ar-question-group"><h3>True / False</h3>'+tf.map((x,i)=>'<div class="ar-question"><p><b>'+(i+1)+'.</b> '+E(x.text)+'</p><label><input type="radio" name="tf-'+i+'" value="true" '+(chosenAnswers['tf'+i]==='true'?'checked':'')+'> True</label><label><input type="radio" name="tf-'+i+'" value="false" '+(chosenAnswers['tf'+i]==='false'?'checked':'')+'> False</label></div>').join('')+'</div>'+
  '<div class="ar-question-group"><h3>Multiple choice</h3>'+mc.map((x,i)=>'<div class="ar-question"><p><b>'+(i+6)+'.</b> '+E(x.text)+'</p>'+(x.options||[]).map((o,j)=>'<label><input type="radio" name="mc-'+i+'" value="'+j+'" '+(chosenAnswers['mc'+i]===String(j)?'checked':'')+'> '+E(o)+'</label>').join('')+'</div>').join('')+'</div><button id="ar-grade" class="ar-primary">Check answers</button><div id="ar-score"></div></section>';
