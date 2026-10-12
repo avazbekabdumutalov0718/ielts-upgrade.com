@@ -17,29 +17,44 @@
       const key = 'speaking-topic:' + part + ':' + topicIndex;
       const cached = collections.get(key);
       if (cached?.source === group) return cached;
-      const byPhrase = new Map();
-      let occurrences = 0;
-      group.questions.forEach((question, questionIndex) => {
+      const items = [];
+      const byQuestion = [];
+      (group.questions || []).forEach((question, questionIndex) => {
         const answer = clean(question.answer);
-        (question.cards || []).forEach((ref, cardIndex) => {
-          const card = Number.isInteger(ref) ? getWord(ref) : ref;
-          if (!card?.w) return;
-          const phraseKey = normalize(card.w) + '\u0000' + normalize(card.u);
-          const ownExample = clean(card.e);
-          const sentence = ownExample && answer.includes(ownExample) ? ownExample :
-            (answer.match(/[^.!?]+[.!?]+(?:["'”’])?|[^.!?]+$/g) || []).map(clean).find(text => normalize(text).includes(normalize(card.w))) || answer;
-          let word = byPhrase.get(phraseKey);
-          if (!word) {
-            word = {id: key + ':' + (question.id || questionIndex) + ':' + cardIndex, w: card.w, u: card.u || '', d: card.d || '', e: sentence, p: card.p || '', t: group.title, s: true, sampleAnswerSource: true, sampleExamples: [], sources: []};
-            byPhrase.set(phraseKey, word);
-          }
-          if (sentence && !word.sampleExamples.includes(sentence)) word.sampleExamples.push(sentence);
-          word.sources.push({questionIndex, questionId: question.id, question: question.q, sentence});
-          occurrences++;
+        const normalAnswer = normalize(answer);
+        const questionItems = [];
+        const available = (question.cards || []).map(ref => Number.isInteger(ref) ? getWord(ref) : ref).filter(card => card?.w);
+        const used = new Set();
+        const chosen = [];
+        // Include every marked phrase (not a fixed number). Then include any
+        // separately listed phrases used in this answer but not bolded.
+        for (const match of String(question.answer || '').matchAll(/\*\*([^*]+)\*\*/g)) {
+          const phrase = match[1].trim();
+          const index = available.findIndex((card, i) => !used.has(i) && normalize(card.w) === normalize(phrase));
+          if (index >= 0) { chosen.push(available[index]); used.add(index); }
+          else if (phrase) chosen.push({w: phrase, u: 'Tarjimasi hali kiritilmagan'});
+        }
+        available.forEach((card, index) => {
+          if (!used.has(index) && normalAnswer.includes(normalize(card.w))) chosen.push(card);
         });
+        chosen.forEach((card, cardIndex) => {
+          const ownExample = clean(card.e);
+          const sentence = ownExample && normalAnswer.includes(normalize(ownExample)) ? ownExample :
+            (answer.match(/[^.!?]+[.!?]+(?:["'”’])?|[^.!?]+$/g) || []).map(clean).find(text => normalize(text).includes(normalize(card.w))) || answer;
+          const word = {
+            id: key + ':' + (question.id || questionIndex) + ':' + cardIndex,
+            w: card.w, u: card.u || '', d: card.d || '', e: sentence, p: card.p || '',
+            t: group.title, s: true, sampleAnswerSource: true,
+            sampleExamples: [sentence].filter(Boolean),
+            sources: [{questionIndex, questionId: question.id, question: question.q, sentence}]
+          };
+          items.push(word);
+          questionItems.push(word);
+          wordsById.set(word.id, word);
+        });
+        byQuestion.push({question, questionIndex, items: questionItems});
       });
-      const collection = {key, part, topicIndex, title: group.title, questionCount: group.questions.length, occurrences, items: [...byPhrase.values()], source: group};
-      collection.items.forEach(word => wordsById.set(word.id, word));
+      const collection = {key, part, topicIndex, title: group.title, questionCount: group.questions.length, occurrences: items.length, items, byQuestion, source: group};
       collections.set(key, collection);
       return collection;
     }
@@ -52,11 +67,28 @@
     function sourceMarkup(source, part, topicIndex) {
       return '<li><p class="stc-question">' + (source.questionIndex + 1) + '. ' + escape(source.question) + '</p><blockquote>' + escape(source.sentence) + '</blockquote><button type="button" class="stc-source-open" data-stc-question="' + source.questionIndex + '" data-part="' + part + '" data-topic="' + topicIndex + '">Sample answerni ochish →</button></li>';
     }
+    function questionMarkup(collection) {
+      const questions = collection.byQuestion.map(({question, questionIndex, items}) => {
+        const answer = String(question.answer || '').split(/\n\s*\n/).map(paragraph =>
+          '<p>' + escape(paragraph).replace(/\*\*([^*]+)\*\*/g, '<mark class="stc-answer-phrase">$1</mark>').replace(/\n/g, ' ') + '</p>'
+        ).join('');
+        return '<article class="stc-qa-card"><h4><span>' + String(questionIndex + 1).padStart(2, '0') +
+          '</span> ' + escape(question.q) + '</h4><div class="stc-sample-label">SAMPLE ANSWER</div>' +
+          '<div class="stc-sample-answer" lang="en">' + answer + '</div><h5>Shu javobdagi barcha ' + items.length +
+          ' ta collocation</h5><ol class="stc-question-phrases">' + items.map(item =>
+            '<li><strong lang="en">' + escape(item.w) + '</strong><span>' + escape(item.u) + '</span></li>'
+          ).join('') + '</ol></article>';
+      }).join('');
+      return '<section class="stc-questions"><h3>Barcha ' + collection.questionCount +
+        ' ta savol va sample answer</h3>' + questions + '</section>' +
+        '<h2 class="stc-collection-title">Topicdagi barcha sample answer collocationlari</h2>' +
+        '<p class="stc-collection-note">Har bir savolning iboralari alohida saqlangan. Takrorlangan iboralar ham aynan ishlatilgan savoli uchun hisobga olinadi. Hech qanday sonli limit yo‘q.</p>';
+    }
     function render(part, topicIndex) {
       const collection = collect(part, topicIndex);
       if (!collection) return '';
       const {items, title, questionCount} = collection;
-      return '<section class="stc-section" data-study-part="' + part + '" data-study-topic="' + topicIndex + '" aria-labelledby="stc-title"><div class="stc-heading"><div><span>PART ' + part + ' · SAMPLE ANSWER COLLOCATIONS</span><h2 id="stc-title">' + escape(title) + ' · Collocation to‘plami</h2><p>Shu topicdagi barcha ' + questionCount + ' ta sample answerdan yig‘ildi. Takrorlangan iboralar bitta kartada ko‘rsatiladi.</p></div><b>' + items.length + ' ta ibora</b></div>' +
+      return '<section class="stc-section" data-study-part="' + part + '" data-study-topic="' + topicIndex + '" aria-labelledby="stc-title"><div class="stc-heading"><div><span>PART ' + part + ' · SAMPLE ANSWER COLLOCATIONS</span><h2 id="stc-title">' + escape(title) + ' · Collocation to‘plami</h2><p>Shu topicdagi barcha ' + questionCount + ' ta savol, ularning sample answerlari va har bir javobdagi barcha collocationlar.</p></div><b>' + items.length + ' ta ibora</b></div>' + questionMarkup(collection) +
         '<h3 class="stc-games-title">Barcha ' + items.length + ' ta iborani 7 o‘yinda o‘rganing</h3><div class="games-grid stc-games">' + getGames().map(game => {
           const progress = getProgress(collection, game[0]);
           return '<button type="button" class="game-tile ' + game[4] + '" data-stc-game="' + game[0] + '" data-part="' + part + '" data-topic="' + topicIndex + '"' + (!items.length ? ' disabled' : '') + '><span class="game-icon" aria-hidden="true">' + game[3] + '</span><strong>' + escape(game[1]) + '</strong><small>' + escape(game[2]) + '</small><span class="game-count">' + (progress ? 'Davom ettirish: ' + Math.min(progress.idx, items.length) + ' / ' + items.length : items.length + ' ta ibora') + '</span></button>';
