@@ -53,7 +53,7 @@
         '<button type="button" class="spw-spin" aria-label="Part ' + part + ' barabanini aylantirish"' + (wheel.spin || !topics.length ? ' disabled' : '') + '>' + (wheel.spin ? 'Aylanyapti…' : selected ? '↻ Yana aylantirish' : '↻ Aylantirish') + '</button>' +
         '<div class="spw-result" role="status" aria-live="polite" aria-atomic="true"><small>' + (wheel.spin ? 'MAVZU TANLANMOQDA' : selected ? 'TANLANGAN MAVZU' : 'TAYYORMISIZ?') + '</small><strong>' + escape(wheel.spin ? 'Baraban aylanyapti…' : selected?.title || 'Barabanni aylantiring') + '</strong></div>' +
         '<button type="button" class="spw-open"' + (!selected || wheel.spin ? ' hidden' : '') + '>Mavzu savollarini ochish →</button>' +
-        '<details class="spw-catalog" open><summary>Barabandagi barcha ' + topics.length + ' ta mavzu</summary><ol>' + topics.map(topic => '<li data-wheel-topic="' + topic.index + '" role="button" tabindex="0" aria-label="' + escape(topic.title) + ' mavzusini tanlash"' + (selected?.index === topic.index ? ' class="is-selected"' : '') + '><span>' + escape(topic.title) + '</span><small>' + topic.count + ' ta savol</small></li>').join('') + '</ol></details></div></div><div class="spw-study"' + (!selected || wheel.spin ? ' hidden' : '') + '>' + (selected && !wheel.spin ? renderCollection(part, selected.index) : '') + '</div></article></section>';
+        '<label class="spw-search-label" for="spw-search-' + part + '">Mavzuni tez qidirish</label><input type="search" class="spw-search" id="spw-search-' + part + '" placeholder="Mavzu nomini yozing..." autocomplete="off"><p class="spw-filter-status" aria-live="polite"></p><details class="spw-catalog" open><summary>Barabandagi barcha ' + topics.length + ' ta mavzu</summary><ol>' + topics.map(topic => '<li data-wheel-topic="' + topic.index + '" role="button" tabindex="0" aria-label="' + escape(topic.title) + ' mavzusini tanlash"' + (selected?.index === topic.index ? ' class="is-selected"' : '') + '><span>' + escape(topic.title) + '</span><small>' + topic.count + ' ta savol</small></li>').join('') + '</ol></details></div></div><div class="spw-study"' + (!selected || wheel.spin ? ' hidden' : '') + '>' + (selected && !wheel.spin ? renderCollection(part, selected.index) : '') + '</div></article></section>';
     }
     function update(part) {
       const card = cardFor(part), wheel = getWheel(part);
@@ -113,6 +113,17 @@
         update(part);
       }, duration);
     }
+    function selectTopic(part, index) {
+      const current = getWheel(part);
+      if (current.spin) return;
+      const selected = current.pool.find(topic => topic.index === index);
+      if (!selected) return;
+      current.selected = selected;
+      current.seen.add(selected.index);
+      const step = 360 / current.pool.length;
+      current.rotation = (360 - (selected.index + 0.5) * step) % 360;
+      update(part);
+    }
     function updateZoom(part, zoom) {
       const wheel = getWheel(part), card = cardFor(part);
       wheel.zoom = Math.max(1, Math.min(3, zoom));
@@ -135,18 +146,27 @@
         card.querySelector('.spw-zoom-in').addEventListener('click', () => updateZoom(part, getWheel(part).zoom + 0.5));
         card.querySelector('.spw-zoom-reset').addEventListener('click', () => updateZoom(part, 1));
         updateZoom(part, getWheel(part).zoom);
+        // Every topic can be selected from the wheel itself or the searchable list.
+        card.querySelector('.spw-disc').addEventListener('click', event => {
+          const group = event.target.closest('[data-topic-index]');
+          if (group) selectTopic(part, Number(group.dataset.topicIndex));
+        });
+        const search = card.querySelector('.spw-search');
+        const filter = () => {
+          const query = search.value.trim().toLocaleLowerCase('en');
+          let matches = 0;
+          card.querySelectorAll('[data-wheel-topic]').forEach(entry => {
+            const visible = entry.textContent.toLocaleLowerCase('en').includes(query);
+            entry.hidden = !visible;
+            if (visible) matches++;
+          });
+          card.querySelector('.spw-filter-status').textContent =
+            query ? matches + ' ta mos mavzu' : 'Barcha ' + getWheel(part).pool.length + ' ta mavzu ro‘yxatda';
+        };
+        search.addEventListener('input', filter);
+        filter();
         card.querySelectorAll('[data-wheel-topic]').forEach(entry => {
-          const pick = () => {
-            const current = getWheel(part);
-            if (current.spin) return;
-            const selected = current.pool.find(topic => topic.index === Number(entry.dataset.wheelTopic));
-            if (!selected) return;
-            current.selected = selected;
-            current.seen.add(selected.index);
-            const step = 360 / current.pool.length;
-            current.rotation = (360 - (selected.index + 0.5) * step) % 360;
-            update(part);
-          };
+          const pick = () => selectTopic(part, Number(entry.dataset.wheelTopic));
           entry.addEventListener('click', pick);
           entry.addEventListener('keydown', event => {
             if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); pick(); }
