@@ -162,38 +162,57 @@
      (list.length?'<div class="ga-session-list">'+list.slice().reverse().map(x=>'<div><span>'+esc(x.category)+'<small>'+esc(x.source||'focus')+'</small></span><b>'+hh(mins(x.minutes))+'</b><em>'+esc(x.rating||'—')+'/10</em><button data-ga-session-remove="'+esc(x.id)+'">×</button></div>').join('')+'</div>':'<p class="ga-muted">Hali sessiya qayd qilinmagan.</p>')+'</section>';
  }
  function analytics(s){
-   const st=stats(s);
-   const max=Math.max(1,...Object.values(st.cats));
-   const chart=SKILLS.map(k=>'<div class="ga-bar-row"><span>'+esc(k)+'</span><div><i style="width:'+Math.round(st.cats[k]/max*100)+'%"></i></div><b>'+hh(st.cats[k])+'</b></div>').join('');
-   const weekdays=Array.from({length:7},(_,i)=>offset(localDate(),i-6));
-   const best=st.best?fmt(st.best.day)+' · '+st.best.tasks+' tasks · '+hh(st.best.minutes):'Yozuv yo‘q';
-   const weekly=weekdays.map(d=>'<div class="ga-week-day"><small>'+fmt(d)+'</small><b>'+completed(s,d)+'</b><span>'+hh(duration(s,d))+'</span></div>').join('');
-   const firstOfMonth=localDate().slice(0,7)+'-01';
-   const daysMonth=Array.from({length:31},(_,i)=>offset(firstOfMonth,i)).filter(d=>d.slice(0,7)===firstOfMonth.slice(0,7));
-   const months=Array.from({length:6},(_,i)=>{
-     const dt=new Date(localDate()+'T12:00:00');dt.setDate(1);dt.setMonth(dt.getMonth()-5+i);
-     const prefix=localDate(dt).slice(0,7);
-     const mDays=Object.keys(s.days||{}).filter(d=>d.startsWith(prefix));
-     return {month:prefix,task:sum(mDays,d=>completed(s,d)),minutes:sum(sessions(s).filter(x=>x.day.startsWith(prefix)),x=>mins(x.minutes))};
-   });
-   const maxMonth=Math.max(1,...months.map(x=>x.task));
-   const monthly=months.map(m=>'<div class="ga-month-col"><div><i style="height:'+Math.max(2,Math.round(m.task/maxMonth*100))+'%"></i></div><b>'+m.task+'</b><small>'+m.month.slice(5)+'</small></div>').join('');
-   const scores=['Reading','Listening','Speaking','Writing'].map(skill=>{
-     const doneCount=sum(st.thisWeek,d=> (api()?.getGroups()||[]).filter(g=>g.label===skill).flatMap(g=>g.tasks).filter(t=>isDone(s,d,t)).length);
-     const time=st.cats[skill]||0;
-     return {skill,weight:doneCount*15+time,doneCount,time};
-   }).sort((a,b)=>a.weight-b.weight);
-   const countPer=knownTasks().length*7;
-   return '<section class="ga-panel"><h3>⌛ Study Time Distribution</h3><div class="ga-bars">'+chart+'</div></section>'+
-     '<section class="ga-panel"><h3>🏆 Best Study Day · Personal Records</h3><div class="ga-tiles">'+card('🌟','Best day',st.best?st.best.day:'—',best)+
-      card('⏳','Longest session',st.longest?hh(st.longest.minutes):'—',st.longest?.category||'')+
-      card('📈','Most focused day',st.maxTime?.minutes?hh(st.maxTime.minutes):'—',st.maxTime?.minutes?st.maxTime.day:'')+'</div></section>'+
-     '<section class="ga-panel"><h3>📆 Weekly Report</h3><div class="ga-week-grid">'+weekly+'</div><p class="ga-muted">Oxirgi 7 kun: '+st.weekTasks+' / '+countPer+' checklist va '+hh(st.weekMinutes)+' taymer va sessiya vaqti.</p></section>'+
-     '<section class="ga-panel"><h3>📈 Monthly Analytics</h3><div class="ga-month-chart">'+monthly+'</div><p class="ga-muted">Ustunlarda har oydagi bajarilgan asosiy vazifalar soni ko‘rsatilgan.</p></section>'+
-     '<section class="ga-panel"><h3>🔎 Weak Skill Detector</h3><p class="ga-muted">Oxirgi 7 kunlik checklist va qayd etilgan fokus vaqtiga asoslangan baho (IELTS band score emas).</p><div class="ga-skill-rows">'+scores.map((x,i)=>'<div><b>'+esc(x.skill)+'</b><span>'+x.doneCount+' completed · '+hh(x.time)+'</span>'+(i===0?'<em>Needs attention</em>':'')+'</div>').join('')+'</div></section>';
- }
- function inputField(label,name,kind='text',placeholder='',value='',opts=''){
-   return '<label>'+label+'<input name="'+name+'" type="'+kind+'" placeholder="'+esc(placeholder)+'" value="'+esc(value)+'" '+opts+'></label>';
+   const st=stats(s),today=localDate(),last=st.days[st.days.length-1]||START;
+   const anchor=(periodAnchor<START||periodAnchor>today)?last:periodAnchor;
+   const date=new Date(anchor+'T12:00:00');
+   const monday=offset(anchor,-((date.getDay()+6)%7));
+   const first=anchor.slice(0,7)+'-01';
+   const periodStart=periodMode==='all'?START:periodMode==='month'?first:monday;
+   const periodEnd=periodMode==='all'?last:periodMode==='month'?offset(first,32).slice(0,7)+'-01':offset(monday,6);
+   const monthEnd=periodMode==='month'?offset(periodEnd,-1):periodEnd;
+   const start=periodStart<START?START:periodStart;
+   const end=monthEnd>last?last:monthEnd;
+   const range=st.days.filter(d=>d>=start&&d<=end);
+   const doneTotal=sum(range,d=>completed(s,d));
+   const minutesTotal=sum(range,d=>duration(s,d)),activeCount=range.filter(d=>activeDay(s,d)).length;
+   const percentage=range.length?Math.round(doneTotal/(range.length*Math.max(1,knownTasks().length))*100):0;
+   const options=SKILLS.map(k=>({key:k,m:sum(sessions(s).filter(x=>range.includes(x.day)&&x.category===k),x=>mins(x.minutes))}));
+   const max=Math.max(1,...options.map(x=>x.m));
+   const bars=options.map(x=>'<div class="ga-bar-row"><span>'+esc(x.key)+'</span><div><i style="width:'+Math.round(x.m/max*100)+'%"></i></div><b>'+hh(x.m)+'</b></div>').join('');
+   const daysTable=range.slice().reverse().map(d=>'<div class="gp-day-row"><span><b>'+d+'</b><small>'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(d+'T12:00:00').getDay()]+'</small></span><strong>'+completed(s,d)+' / '+knownTasks().length+'</strong><span>'+hh(duration(s,d))+'</span><span>'+logs(s).filter(x=>x.day===d).length+' practice</span></div>').join('');
+   const monthKeys=[...new Set(st.days.map(d=>d.slice(0,7)))];
+   const monthRows=monthKeys.map(key=>{
+      const dates=st.days.filter(d=>d.startsWith(key)),total=sum(dates,d=>completed(s,d));
+      return '<button type="button" class="gp-history-month" data-ga-choose-month="'+key+'"><b>'+key+'</b><strong>'+total+' tasks</strong><small>'+hh(sum(dates,d=>duration(s,d)))+'</small></button>';
+   }).join('');
+   const weekRows=[];
+   for(let i=0;i<st.days.length;i+=7){
+     const d=st.days.slice(i,i+7);
+     weekRows.push('<button type="button" class="gp-history-month" data-ga-choose-week="'+d[0]+'"><b>'+fmt(d[0])+' – '+fmt(d[d.length-1])+'</b><strong>'+sum(d,k=>completed(s,k))+' tasks</strong><small>'+hh(sum(d,k=>duration(s,k)))+'</small></button>');
+   }
+   const ranked=['Reading','Listening','Speaking','Writing'].map(skill=>{
+     const groups=(api()?.getGroups()||[]).filter(g=>g.label===skill);
+     const n=sum(range,d=>groups.flatMap(g=>g.tasks).filter(t=>isDone(s,d,t)).length);
+     const m=options.find(x=>x.key===skill)?.m||0;return {skill,n,m,total:range.length*groups.flatMap(g=>g.tasks).length};
+   }).sort((a,b)=>(a.n+a.m/30)-(b.n+b.m/30));
+   return '<section class="ga-panel gp-period"><div class="ga-panel-head"><h3>📊 Kunlik · haftalik · oylik progress</h3><small>Kuzatuv boshlandi: 15.10.2026</small></div>'+
+    '<div class="gp-range-controls"><div class="gp-range-buttons">'+[['week','1 hafta'],['month','1 oy'],['all','Boshidan']].map(([v,l])=>'<button type="button" data-ga-period="'+v+'" class="'+(periodMode===v?'selected':'')+'">'+l+'</button>').join('')+'</div>'+
+    '<label>Davrni tanlash<input id="gaPeriodDate" type="date" min="'+START+'" value="'+anchor+'"></label></div>'+
+    '<p class="ga-muted">'+(range.length?start+' — '+end+' · '+range.length+' kun':'15-oktabr hali boshlanmagan. Oldingi kunlar hisobga olinmaydi.')+'</p>'+
+    '<div class="ga-tiles">'+card('✅','Bajarilgan vazifalar',doneTotal+' / '+(range.length*knownTasks().length),'Barcha checklistlar')+
+     card('📈','Bajarilish foizi',percentage+'%','Tanlangan davr')+
+     card('⏱','O‘qish sessiyalari',hh(minutesTotal),'Taymer va sessiyalar')+
+     card('🗓','Faol kunlar',activeCount+' / '+range.length,'Tanlangan davr')+'</div></section>'+
+    '<section class="ga-panel"><h3>📅 Har bir kunning natijasi</h3><div class="gp-day-history">'+(daysTable||'<p class="ga-muted">Hozircha hisoblangan kunlar yo‘q.</p>')+'</div></section>'+
+    '<section class="ga-panel"><h3>📈 Oylik arxiv</h3><div class="gp-history-grid">'+(monthRows||'<p class="ga-muted">15-oktabrdan boshlanadi.</p>')+'</div></section>'+
+    '<section class="ga-panel"><h3>📆 Haftalik arxiv</h3><div class="gp-history-grid">'+(weekRows.join('')||'<p class="ga-muted">15-oktabrdan boshlanadi.</p>')+'</div></section>'+
+    '<section class="ga-panel"><h3>⌛ Study Time Distribution</h3><div class="ga-bars">'+bars+'</div></section>'+
+    '<section class="ga-panel"><h3>🏆 Rekordlar · Eng yaxshi kun</h3><div class="ga-tiles">'+card('🌟','Eng yaxshi kun',st.best?.day||'—',st.best?st.best.tasks+' vazifa · '+hh(st.best.minutes):'Hali faol kun yo‘q')+
+      card('⏳','Eng uzun sessiya',st.longest?hh(st.longest.minutes):'—',st.longest?.category||'')+
+      card('🔥','Streak',st.streak+' kun','Ketma-ket o‘qilgan kunlar')+
+      card('📗','Jami vazifalar',st.taskTotal,'15-oktabrdan')+'</div></section>'+
+    '<section class="ga-panel"><h3>🔎 Weak Skill Detector</h3><p class="ga-muted">Tanlangan davrdagi checklist va o‘qish vaqtiga asoslangan — IELTS band emas.</p>'+
+      '<div class="ga-skill-rows">'+ranked.map((x,i)=>'<div><b>'+esc(x.skill)+'</b><span>'+x.n+'/'+x.total+' tasks · '+hh(x.m)+'</span>'+(i===0&&range.length?'<em>Ko‘proq mashq kerak</em>':'')+'</div>').join('')+'</div></section>';
  }
  function exams(s){
    const activities=logs(s).slice().reverse().slice(0,70);
