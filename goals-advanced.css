@@ -60,7 +60,7 @@
 .ga-plan-task button:disabled{opacity:.3;cursor:default}
 .ga-editable-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .ga-editable-list label{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fbf8fd;border-radius:11px;border:1px solid #f2eaf4;padding:11px;font-size:12px;color:#51435f}
-.ga-editable-list input{max-width:89px;font-weight:700}
+.ga-editable-list input[type=number]{max-width:89px;font-weight:700;flex:0 0 89px}.ga-editable-list input[type=text]{min-width:0;flex:1;font-size:11px;font-weight:600}
 .ga-custom-list label{background:#faf7fc;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px}
 .ga-custom-list label span{flex:1;font-size:12px;color:#4a3e57}
 .ga-focus-clock{text-align:center;font-size:clamp(52px,8vw,94px);font-weight:800;letter-spacing:-.06em;line-height:1.2;color:#50337a;padding:10px 0}
