@@ -214,6 +214,9 @@
     '<section class="ga-panel"><h3>🔎 Weak Skill Detector</h3><p class="ga-muted">Tanlangan davrdagi checklist va o‘qish vaqtiga asoslangan — IELTS band emas.</p>'+
       '<div class="ga-skill-rows">'+ranked.map((x,i)=>'<div><b>'+esc(x.skill)+'</b><span>'+x.n+'/'+x.total+' tasks · '+hh(x.m)+'</span>'+(i===0&&range.length?'<em>Ko‘proq mashq kerak</em>':'')+'</div>').join('')+'</div></section>';
  }
+ function inputField(label,name,kind='text',placeholder='',value='',opts=''){
+   return '<label>'+label+'<input name="'+name+'" type="'+kind+'" placeholder="'+esc(placeholder)+'" value="'+esc(value)+'" '+opts+'></label>';
+ }
  function taskChecklist(s,groups){
    const day=selected(),g=api()?.getGroups()||[];
    return '<div class="gs-skill-grid">'+groups.map(name=>{
