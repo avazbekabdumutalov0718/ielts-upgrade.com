@@ -42,7 +42,7 @@ function articleVisual(a){
 }
 async function applyReviewedMCQ(){
  try{
-  const response=await fetch('articles-mcq-reviewed.json?v=20261013-full-review-v2');
+  const response=await fetch('articles-mcq-reviewed.json?v=20261013-full-review-v3');
   if(!response.ok)return;
   const json=await response.json();
   for(const article of db){
