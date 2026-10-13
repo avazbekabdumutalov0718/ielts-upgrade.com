@@ -363,8 +363,6 @@
      if(!['reading','article','listening','speaking','writing'].includes(type))return;
      update(x=>{initialize(x);x.activities.push({id:id(),day,type,category:LABELS[type]||'SAT',title:String(d.title).slice(0,100),
        score:d.score===''?'':clamp(d.score,0,999),total:d.total===''?'':clamp(d.total,0,999),band:String(d.band||'').slice(0,20),source:'manual',words:clamp(d.words,0,9999),mistakes:clamp(d.mistakes,0,9999),minutes:clamp(d.minutes,0,1440)})});
-   }else if(form.id==='gaMockForm'){
-     update(x=>{initialize(x);x.mocks.push({id:id(),day,category:SKILLS.includes(d.category)?d.category:'Reading',title:String(d.title).slice(0,100),band:String(d.band).slice(0,16)})});
    }
  }
  function pendingKey(uid){return 'vivid:goals:verified-activity:'+uid}
@@ -392,7 +390,6 @@
    const ok=update((ex,root)=>{
      initialize(ex);
      const seen=new Set(ex.activities.map(x=>x.id));
-     const recorded=new Set((ex.mocks||[]).map(x=>x.autoId).filter(Boolean));
      for(const item of items){
        if(seen.has(item.id))continue;
        seen.add(item.id);ex.activities.push(item);
@@ -403,13 +400,8 @@
          if(key)d.checks[key]=true;
          d.updatedAt=new Date().toISOString();
        }
-       if(item.type==='writing'&&item.band&&!recorded.has(item.id)){
-         ex.mocks.push({id:id(),autoId:item.id,day:item.day,category:'Writing',title:item.title,band:item.band,source:'automatic'});
-         recorded.add(item.id);
-       }
      }
      if(ex.activities.length>2000)ex.activities.splice(0,ex.activities.length-2000);
-     if(ex.mocks.length>500)ex.mocks.splice(0,ex.mocks.length-500);
    });
    if(ok)try{localStorage.removeItem(pendingKey(uid))}catch{}
    reminderPending=false;
