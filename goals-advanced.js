@@ -136,11 +136,11 @@
      '<p class="ga-muted">Vaqt, yo‘nalish va vazifani kiriting. Vazifalarni vaqt bo‘yicha saralang yoki ↑ ↓ tugmalari bilan o‘zgartiring.</p>'+
      '<form id="gaPlanForm" class="ga-form"><label>Start<input type="time" name="start" value="09:00" required></label><label>Length (min)<input type="number" name="length" min="5" max="360" value="50" required></label>'+
      '<label>Skill<select name="category">'+options+'</select></label><label class="ga-grow">Task<input name="title" maxlength="100" placeholder="Masalan: Reading passage" required></label><button type="submit">+ Add</button></form>'+
-     '<div class="ga-plan-list">'+(items.length?items.map((x,i)=>'<div class="ga-plan-task '+(x.done?'ga-done':'')+'"><input type="checkbox" data-ga-plan-done="'+esc(x.id)+'" '+(x.done?'checked':'')+'><div><b>'+esc(x.start)+' · '+esc(x.title)+'</b><small>'+esc(x.category)+' · '+clamp(x.length,0,360)+' min</small></div><button data-ga-shift="'+esc(x.id)+'" data-direction="-1" aria-label="Move up" '+(!i?'disabled':'')+'>↑</button><button data-ga-shift="'+esc(x.id)+'" data-direction="1" aria-label="Move down" '+(i===items.length-1?'disabled':'')+'>↓</button><button data-ga-plan-remove="'+esc(x.id)+'">×</button></div>').join(''):'<p class="ga-muted">Hali kunlik vazifa rejalashtirilmagan.</p>')+'</div></section>'+
+     '<div class="ga-plan-list">'+(items.length?items.map((x,i)=>'<div data-plan-id="'+esc(x.id)+'" class="ga-plan-task '+(x.done?'ga-done':'')+'"><input type="checkbox" data-ga-plan-done="'+esc(x.id)+'" '+(x.done?'checked':'')+'><div><b>'+esc(x.start)+' · '+esc(x.title)+'</b><small>'+esc(x.category)+' · '+clamp(x.length,0,360)+' min</small></div><button data-ga-shift="'+esc(x.id)+'" data-direction="-1" aria-label="Move up" '+(!i?'disabled':'')+'>↑</button><button data-ga-shift="'+esc(x.id)+'" data-direction="1" aria-label="Move down" '+(i===items.length-1?'disabled':'')+'>↓</button><button data-ga-plan-remove="'+esc(x.id)+'">×</button></div>').join(''):'<p class="ga-muted">Hali kunlik vazifa rejalashtirilmagan.</p>')+'</div></section>'+
      '<section class="ga-panel"><h3>📝 Editable Goals & Custom Goals</h3><p class="ga-muted">Asosiy Goals checklistidagi sonli maqsadlar va nomlarni sozlashingiz mumkin.</p>'+
      '<div class="ga-editable-list">'+knownTasks().filter(t=>t.target).map(t=>'<label><input type="text" maxlength="90" data-ga-goal-name="'+t.id+'" aria-label="Goal label" value="'+esc(extra(s).names?.[t.id]||t.name)+'"><input type="number" min="1" max="99999" data-ga-goal-target="'+t.id+'" aria-label="Daily target" value="'+(Number(extra(s).targets?.[t.id])||t.target)+'"></label>').join('')+'</div>'+
      '<form id="gaCustomGoal" class="ga-form"><label class="ga-grow">Custom daily goal<input name="title" maxlength="80" placeholder="Yangi vazifa" required></label><button type="submit">Add goal</button></form>'+
-     '<div class="ga-custom-list">'+todos.map(t=>'<label><input type="checkbox" data-ga-custom-check="'+esc(t.id)+'" '+(extra(s).customCompletion?.[day]?.[t.id]?'checked':'')+'><span>'+esc(t.name)+'</span><button type="button" data-ga-custom-remove="'+esc(t.id)+'">×</button></label>').join('')+'</div></section>';
+     '<div class="ga-custom-list">'+todos.map(t=>'<label data-custom-id="'+esc(t.id)+'"><input type="checkbox" data-ga-custom-check="'+esc(t.id)+'" '+(extra(s).customCompletion?.[day]?.[t.id]?'checked':'')+'><span>'+esc(t.name)+'</span><button type="button" data-ga-custom-remove="'+esc(t.id)+'">×</button></label>').join('')+'</div></section>';
  }
  function focusClock(){
    const total=focusElapsed+(focused?Math.floor((Date.now()-focusSince)/1000):0);
@@ -344,6 +344,18 @@
    if(!authorized()||!api()?.isOpen())return;
    const root=e.target.closest('#vividGoalsPage');if(!root)return;
    let el=e.target.closest('[data-ga-tab]');if(el){tab=el.dataset.gaTab;api().refresh();return;}
+   if((el=e.target.closest('[data-ga-period]'))){periodMode=el.dataset.gaPeriod;api().refresh();return;}
+   if((el=e.target.closest('[data-ga-choose-month]'))){
+     periodAnchor=el.dataset.gaChooseMonth+'-15';periodMode='month';api().refresh();return;
+   }
+   if((el=e.target.closest('[data-ga-choose-week]'))){
+     periodAnchor=el.dataset.gaChooseWeek;periodMode='week';api().refresh();return;
+   }
+   if((el=e.target.closest('[data-gs-day]'))){
+     const field=document.getElementById('goalsSelectedDate');
+     if(field){field.value=el.dataset.gsDay;field.dispatchEvent(new Event('change',{bubbles:true}));}
+     return;
+   }
    const today=selected();
    if((el=e.target.closest('[data-ga-plan-remove]'))){
      update(ex=>{initialize(ex);ex.plan[today]=(ex.plan[today]||[]).filter(x=>x.id!==el.dataset.gaPlanRemove)});return;
@@ -378,6 +390,7 @@
    if(!authorized()||!api()?.isOpen()||!e.target.closest('#vividGoalsPage'))return;
    const el=e.target,day=selected();
    if(el.id==='gaFocusCat'){focusCategory=el.value;return;}
+   if(el.id==='gaPeriodDate'){periodAnchor=el.value<START?START:el.value;api().refresh();return;}
    if(el.hasAttribute('data-ga-goal-name')){
      update(x=>{initialize(x);x.names[el.dataset.gaGoalName]=String(el.value||'').trim().slice(0,90)});return;
    }
@@ -413,6 +426,25 @@
      update(x=>{initialize(x);x.settings.examDates={ielts:String(d.ielts),sat:String(d.sat),turkish:String(d.turkish)}});
    }else if(form.id==='gaReflectionForm'){
      update(x=>{initialize(x);x.reflections[day]={learned:String(d.learned||'').slice(0,1600),hard:String(d.hard||'').slice(0,1600),improve:String(d.improve||'').slice(0,1600)}});
+   }else if(form.id==='gaSATNotes'){
+      update(x=>{initialize(x);x.satNotes??={};x.satNotes[day]=String(d.notes||'').slice(0,4000)});
+   }else if(form.id.startsWith('gaIELTSForm-')){
+      const type=form.id.replace('gaIELTSForm-','');
+      if(!['reading','article','listening','speaking','writing'].includes(type))return;
+      update((x,root)=>{
+        initialize(x);
+        const record={id:id(),day,type,category:LABELS[type]||type,title:String(d.title||'').slice(0,100),source:'manual',
+          score:d.score==null||d.score===''?'':clamp(d.score,0,999),
+          total:d.total==null||d.total===''?'':clamp(d.total,0,999),
+          band:String(d.band||'').slice(0,20),words:clamp(d.words,0,9999),
+          mistakes:clamp(d.mistakes,0,9999),minutes:clamp(d.minutes,0,1440)};
+        x.activities.push(record);
+        if(['reading','article','writing'].includes(type)){
+          const key={reading:'read_passage',article:'read_article',writing:'essay'}[type];
+          const entry=root.days[day]??={checks:{},counts:{},hours:'',note:''};
+          entry.checks??={};entry.checks[key]=true;entry.updatedAt=new Date().toISOString();
+        }
+      });
    }else if(form.id==='gaPracticeForm'){
      const type=String(d.type);
      if(!['reading','article','listening','speaking','writing'].includes(type))return;
@@ -467,5 +499,5 @@
  document.addEventListener('change',onChange);
  document.addEventListener('submit',onSubmit);
  focusTicker=setInterval(syncClock,1000);
- window.VividGoalsAdvanced={version:'g2',selectedFeatures:23};
+ window.VividGoalsAdvanced={version:'g3',selectedFeatures:23,startDate:START};
 })();
