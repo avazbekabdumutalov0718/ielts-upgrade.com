@@ -192,31 +192,44 @@
    return '<label>'+label+'<input name="'+name+'" type="'+kind+'" placeholder="'+esc(placeholder)+'" value="'+esc(value)+'" '+opts+'></label>';
  }
  function exams(s){
-   const e=extra(s),activities=logs(s).filter(a=>a.type!=='mock').slice().reverse().slice(0,35);
-   const mocks=(e.mocks||[]).slice().reverse().slice(0,30);
-   const fields=SKILLS.slice(0,5).map(k=>'<option value="'+k+'">'+k+'</option>').join('');
-   return '<section class="ga-panel"><h3>📚 IELTS / SAT Practice Log</h3>'+
-    '<p class="ga-muted">Reading passage, article, listening, speaking va writing natijalarini kiriting. Integratsiyalangan mashqlar tugaganda ayrimlari avtomatik yoziladi; avtomatik qayd bilan qo‘lda kiritilgan qayd alohida ko‘rsatiladi.</p>'+
+   const activities=logs(s).slice().reverse().slice(0,70);
+   const writing=logs(s).filter(x=>x.type==='writing');
+   const reading=logs(s).filter(x=>x.type==='reading'||x.type==='article');
+   const listening=logs(s).filter(x=>x.type==='listening');
+   const speaking=logs(s).filter(x=>x.type==='speaking');
+   const bands=writing.map(x=>Number(x.band)).filter(x=>x>0&&x<=9);
+   const average=bands.length?(sum(bands,x=>x)/bands.length).toFixed(1):'—';
+   const wordCount=sum(writing,x=>Number(x.words)||0);
+   const errorCount=sum(writing,x=>Number(x.mistakes)||0);
+   const inputNum=(name,label,placeholder)=>'<label>'+label+'<input name="'+name+'" type="number" min="0" max="9999" placeholder="'+placeholder+'"></label>';
+   return '<section class="ga-tiles">'+card('📖','Reading & Articles',reading.length,'Finished and logged')+
+     card('🎧','Listening activities',listening.length,'Finished and logged')+
+     card('🗣','Speaking activities',speaking.length,'Practice sessions')+
+     card('✍️','Writing essays',writing.length,'Avg practice band '+average)+'</section>'+
+    '<section class="ga-panel"><h3>📚 Reading, Listening, Speaking & Writing Practice Tracker</h3>'+
+    '<p class="ga-muted">Saytdagi mos mashqlar tugaganda avtomatik yoziladi; boshqa mashqlarni qo‘lda kiriting. Avtomatik kelgan natijalar va qo‘lda kiritilgan yozuvlar alohida belgilanadi.</p>'+
     '<form id="gaPracticeForm" class="ga-form">'+
-     '<label>Activity<select name="type"><option value="reading">Reading passage</option><option value="article">Article</option><option value="listening">Listening</option><option value="speaking">Speaking</option><option value="writing">Writing essay</option><option value="sat">SAT questions</option></select></label>'+
-     inputField('Title / topic','title','text','Passage 1 / Essay topic','', 'maxlength="100" required')+
-     inputField('Correct / score','score','number','0','', 'min="0" max="999"')+
-     inputField('Total questions','total','number','40','', 'min="0" max="999"')+
-     inputField('Band / score','band','text','7.0','', 'maxlength="20"')+
-     '<button type="submit">Log activity</button></form>'+
-    '<div class="ga-log-list">'+(activities.length?activities.map(a=>'<div><div><b>'+esc(a.title||a.type)+'</b><small>'+esc(a.day)+' · '+esc(a.type)+' · '+esc(a.source||'manual')+'</small></div><span>'+esc(a.band||((a.score!==undefined&&a.score!=='')?a.score+'/'+(a.total||'—'):'✓'))+'</span><button data-ga-activity-remove="'+esc(a.id)+'">×</button></div>').join(''):'<p class="ga-muted">Faoliyat tarixi bo‘sh.</p>')+'</div></section>'+
-    '<section class="ga-panel"><h3>🏅 IELTS Band Tracker · Mock Exam History</h3>'+
-     '<form id="gaMockForm" class="ga-form">'+
-       '<label>Skill<select name="category">'+fields+'</select></label>'+
-       inputField('Band / SAT score','band','text','7.0','', 'maxlength="16" required')+
-       inputField('Test title','title','text','Mock test','', 'maxlength="100" required')+
-       '<button type="submit">Save mock</button></form>'+
-     '<div class="ga-log-list">'+(mocks.length?mocks.map(m=>'<div><div><b>'+esc(m.category)+' · '+esc(m.title)+'</b><small>'+esc(m.day)+'</small></div><strong>'+esc(m.band)+'</strong><button data-ga-mock-remove="'+esc(m.id)+'">×</button></div>').join(''):'<p class="ga-muted">Mock test natijalari kiritilmagan.</p>')+'</div></section>'+
-     '<section class="ga-panel"><h3>🎯 Goal Milestones · 25–100%</h3><div class="ga-milestone-progress">'+
-      [['ielts','IELTS exam'],['sat','SAT exam'],['turkish','Turkish goal']].map(([k,l])=>{
-       const n=clamp(e.goalProgress?.[k],0,100);
-       return '<label>'+l+'<input type="range" min="0" max="100" step="25" value="'+n+'" data-ga-milestone-progress="'+k+'"><strong>'+n+'%</strong></label>';
-      }).join('')+'</div></section>';
+     '<label>Activity<select name="type"><option value="reading">Reading passage</option><option value="article">Article</option><option value="listening">Listening</option><option value="speaking">Speaking practice</option><option value="writing">Writing essay</option></select></label>'+
+     inputField('Title / topic','title','text','Passage or essay topic','', 'maxlength="100" required')+
+     inputNum('score','Correct / score','0')+
+     inputNum('total','Total questions','40')+
+     inputField('Estimated band','band','text','7.0','', 'maxlength="20"')+
+     inputNum('minutes','Speaking minutes','20')+
+     inputNum('words','Essay word count','250')+
+     inputNum('mistakes','Writing errors noticed','3')+
+     '<button type="submit">Save practice</button></form>'+
+    '<p class="ga-muted">Word count va xatolar soni qo‘lda kiritiladi. Estimated band rasmiy IELTS natijasi emas.</p>'+
+    '</section>'+
+    '<section class="ga-panel"><h3>✍️ Writing Performance · Essay Progress</h3>'+
+      '<div class="ga-tiles">'+card('✍️','Essays written',writing.length,'Recorded essays')+
+       card('📈','Average band',average,'Estimated practice scores')+
+       card('🔤','Total written words',wordCount,'Counted from available logs')+
+       card('📝','Mistakes recorded',errorCount,'Manual self-analysis')+'</div></section>'+
+    '<section class="ga-panel"><h3>🗂 Practice History</h3><div class="ga-log-list">'+
+      (activities.length?activities.map(a=>'<div><div><b>'+esc(a.title||a.type)+'</b><small>'+esc(a.day)+' · '+esc(a.type)+' · '+esc(a.source||'manual')+
+        (a.words?' · '+Number(a.words)+' words':'')+(a.mistakes?' · '+Number(a.mistakes)+' errors':'')+(a.minutes?' · '+Number(a.minutes)+' min':'')+'</small></div><span>'+
+        esc(a.band||((a.score!==undefined&&a.score!=='')?a.score+'/'+(a.total||'—'):'✓'))+
+        '</span><button data-ga-activity-remove="'+esc(a.id)+'">×</button></div>').join(''):'<p class="ga-muted">Hali practice tarixi yo‘q.</p>')+'</div></section>';
  }
  function settings(s){
    const e=extra(s),settings=e.settings||{},dates={...DEFAULT_DATES,...(settings.examDates||{})};
@@ -347,9 +360,9 @@
      update(x=>{initialize(x);x.reflections[day]={learned:String(d.learned||'').slice(0,1600),hard:String(d.hard||'').slice(0,1600),improve:String(d.improve||'').slice(0,1600)}});
    }else if(form.id==='gaPracticeForm'){
      const type=String(d.type);
-     if(!['reading','article','listening','speaking','writing','sat'].includes(type))return;
+     if(!['reading','article','listening','speaking','writing'].includes(type))return;
      update(x=>{initialize(x);x.activities.push({id:id(),day,type,category:LABELS[type]||'SAT',title:String(d.title).slice(0,100),
-       score:d.score===''?'':clamp(d.score,0,999),total:d.total===''?'':clamp(d.total,0,999),band:String(d.band||'').slice(0,20),source:'manual'})});
+       score:d.score===''?'':clamp(d.score,0,999),total:d.total===''?'':clamp(d.total,0,999),band:String(d.band||'').slice(0,20),source:'manual',words:clamp(d.words,0,9999),mistakes:clamp(d.mistakes,0,9999),minutes:clamp(d.minutes,0,1440)})});
    }else if(form.id==='gaMockForm'){
      update(x=>{initialize(x);x.mocks.push({id:id(),day,category:SKILLS.includes(d.category)?d.category:'Reading',title:String(d.title).slice(0,100),band:String(d.band).slice(0,16)})});
    }
@@ -363,7 +376,7 @@
    const uid=window.VocabCloud?.userId;if(!uid)return;
    const item={id:id(),day:localDate(),type,category:LABELS[type]||type,title:String(raw.title||type).slice(0,100),
      band:raw.band===undefined?'':String(raw.band).slice(0,20),score:raw.score===undefined?'':clamp(raw.score,0,999),
-     total:raw.total===undefined?'':clamp(raw.total,0,999),source:'automatic'};
+     total:raw.total===undefined?'':clamp(raw.total,0,999),words:clamp(raw.words,0,9999),source:'automatic'};
    const old=pendingRead(uid);
    if(old.length>=200)old.shift();
    old.push(item);
