@@ -72,7 +72,7 @@
     if(required){
       let count=nval(d.counts?.[task.id]);
       if(task.rolling) count+=nval(s.days[prevDay(day)]?.counts?.[task.id]);
-      return count>=required;
+      return !!d.checks?.[task.id] || count>=required;
     }
     return !!d.checks?.[task.id];
   };
@@ -209,8 +209,19 @@
     if(el)el.textContent=message;
   }
   function mark(day,taskId,checked){
-    dayState(day).checks[taskId]=checked;
-    changed(day);render();
+    const task=TASKS.find(t=>t.id===taskId);
+    if(!task || day<START)return;
+    const d=dayState(day);
+    d.checks??={};
+    d.counts??={};
+    d.checks[taskId]=!!checked;
+    if(task.target){
+      // Checking a quantity task fills the target; unchecking resets today's amount.
+      const goal=nval(state.extras?.targets?.[taskId])||task.target;
+      d.counts[taskId]=checked?goal:0;
+    }
+    changed(day);
+    render();
   }
   function render(){
     if(!visible || !isOwnerSession()) return;
@@ -235,10 +246,9 @@
         const count=nval(current.counts?.[t.id]);
         const rolling=t.rolling?nval(state.days[prevDay(selected)]?.counts?.[t.id]):0;
         return `<div class="goals-task ${checked?'is-done':''}">
-          <div class="goals-task-main">${effectiveTarget?
-          `<span class="goals-dot ${checked?'on':''}">${checked?'✓':''}</span>`:
-          `<input type="checkbox" data-goal-check="${t.id}" ${checked?'checked':''} aria-label="${safe(effectiveName)}">`}
-          <span class="goals-task-name">${safe(effectiveName)}</span></div><div class="goals-proof-anchor" data-proof-task="${t.id}" data-proof-day="${selected}"></div>
+          <div class="goals-task-main"><label class="goals-task-label">
+          <input type="checkbox" data-goal-check="${t.id}" ${checked?'checked':''} aria-label="${safe(effectiveName)}">
+          <span class="goals-task-name">${safe(effectiveName)}</span></label></div><div class="goals-proof-anchor" data-proof-task="${t.id}" data-proof-day="${selected}"></div>
           ${effectiveTarget?`<div class="goals-number"><input type="number" min="0" max="99999" step="1" inputmode="numeric" data-goal-count="${t.id}" value="${count}" aria-label="${safe(effectiveName)}: miqdor"><span>${t.rolling?`${count}+ ${rolling} (oldingi kun) / ${effectiveTarget}`:`/ ${effectiveTarget}`}</span></div>`:''}
         </div>`;
       }).join('')}</div></section>`;
@@ -294,13 +304,15 @@
         state.milestones[t.dataset.goalMilestone]=t.checked;
         state.milestonesUpdatedAt=new Date().toISOString();changed();render();
       }else if(t.hasAttribute('data-goal-count')){
-        dayState(selected).counts[t.dataset.goalCount]=Math.floor(nval(t.value));
+        const d=dayState(selected);d.counts??={};d.checks??={};
+        d.counts[t.dataset.goalCount]=Math.floor(nval(t.value));
+        d.checks[t.dataset.goalCount]=false;
         changed(selected);render();
       }else if(t.id==='goalsHours'){
         dayState(selected).hours=t.value===''?'':Math.min(24,Math.max(0,Number(t.value)||0));
         changed(selected);
       }
-    });
+    }, true);
     let noteTimer=null;
     document.addEventListener('input',e=>{
       if(!visible || e.target.id!=='goalsNote' || !e.target.closest('#vividGoalsPage') || !isOwnerSession()) return;
