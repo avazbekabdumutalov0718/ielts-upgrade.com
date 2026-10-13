@@ -1,0 +1,446 @@
+{
+  "version": 1,
+  "provider": "Wikimedia Commons (license checked)",
+  "articles": {
+    "article-001": {
+      "query": "William Kamkwamba wind turbine Malawi",
+      "fallback": "windmill wind power"
+    },
+    "article-002": {
+      "query": "human brain neurological science",
+      "fallback": "brain MRI"
+    },
+    "article-003": {
+      "query": "astronaut spaceflight zero gravity",
+      "fallback": "astronaut space station"
+    },
+    "article-004": {
+      "query": "child school classroom learning",
+      "fallback": "child attention learning"
+    },
+    "article-005": {
+      "query": "athlete sprint running track",
+      "fallback": "sprinting athletics"
+    },
+    "article-006": {
+      "query": "Neanderthal cave prehistoric art",
+      "fallback": "cave paintings prehistoric"
+    },
+    "article-007": {
+      "query": "psychology trust deception communication",
+      "fallback": "human conversation"
+    },
+    "article-008": {
+      "query": "artificial intelligence digital painting",
+      "fallback": "robot artificial intelligence"
+    },
+    "article-009": {
+      "query": "Roman Empire ancient ruins",
+      "fallback": "Colosseum Rome"
+    },
+    "article-010": {
+      "query": "meditation mental resilience nature",
+      "fallback": "mindfulness meditation"
+    },
+    "article-011": {
+      "query": "food cooking spices vegetables",
+      "fallback": "food cooking"
+    },
+    "article-012": {
+      "query": "human brain neuroscience research",
+      "fallback": "human brain"
+    },
+    "article-013": {
+      "query": "human resilience psychology childhood",
+      "fallback": "childhood nature"
+    },
+    "article-014": {
+      "query": "Titanic underwater submarine",
+      "fallback": "Titanic ship"
+    },
+    "article-015": {
+      "query": "Titanic submersible underwater wreck",
+      "fallback": "ocean research submersible"
+    },
+    "article-016": {
+      "query": "social media smartphone teenagers",
+      "fallback": "social media mobile phone"
+    },
+    "article-017": {
+      "query": "London artificial intelligence technology",
+      "fallback": "artificial intelligence United Kingdom"
+    },
+    "article-018": {
+      "query": "air pollution urban city traffic",
+      "fallback": "smog air pollution"
+    },
+    "article-019": {
+      "query": "gangster history crime film",
+      "fallback": "organized crime history"
+    },
+    "article-020": {
+      "query": "scientist Albert Einstein genius",
+      "fallback": "Albert Einstein"
+    },
+    "article-021": {
+      "query": "climate change global warming heat",
+      "fallback": "climate crisis glacier"
+    },
+    "article-022": {
+      "query": "walking exercise park",
+      "fallback": "walking exercise nature"
+    },
+    "article-023": {
+      "query": "language learning books education",
+      "fallback": "language classroom"
+    },
+    "article-024": {
+      "query": "friends social interaction first impressions",
+      "fallback": "people talking social"
+    },
+    "article-025": {
+      "query": "island animals evolution Galapagos",
+      "fallback": "evolution wildlife Galapagos"
+    },
+    "article-026": {
+      "query": "organoid brain laboratory neuron",
+      "fallback": "neuroscience brain cells"
+    },
+    "article-027": {
+      "query": "Miyamoto Musashi samurai Japan",
+      "fallback": "samurai Japan"
+    },
+    "article-028": {
+      "query": "Alexander the Great ancient Greece",
+      "fallback": "Alexander the Great history"
+    },
+    "article-029": {
+      "query": "Auschwitz concentration camp memorial",
+      "fallback": "Auschwitz memorial"
+    },
+    "article-030": {
+      "query": "spacetime relativity physics universe",
+      "fallback": "Albert Einstein relativity"
+    },
+    "article-031": {
+      "query": "computer processor chip electronics",
+      "fallback": "microprocessor computer"
+    },
+    "article-032": {
+      "query": "octopus underwater ocean animal",
+      "fallback": "octopus marine"
+    },
+    "article-033": {
+      "query": "fitness gym workout exercise",
+      "fallback": "fitness training"
+    },
+    "article-034": {
+      "query": "rare birds bird conservation wildlife",
+      "fallback": "birdwatching birds"
+    },
+    "article-035": {
+      "query": "computer cybersecurity hacker laptop",
+      "fallback": "cybersecurity computer"
+    },
+    "article-036": {
+      "query": "child playing with dog animal",
+      "fallback": "child animal"
+    },
+    "article-037": {
+      "query": "horse equestrian jumping competition",
+      "fallback": "horse riding equestrian"
+    },
+    "article-038": {
+      "query": "human psychology emotional drama",
+      "fallback": "psychology emotions"
+    },
+    "article-039": {
+      "query": "Hang Son Doong cave Vietnam",
+      "fallback": "Son Doong cave"
+    },
+    "article-040": {
+      "query": "scientists public health research laboratory",
+      "fallback": "science laboratory"
+    },
+    "article-041": {
+      "query": "sleeping person bed night",
+      "fallback": "sleep bedroom"
+    },
+    "article-042": {
+      "query": "focus productivity office desk notebook",
+      "fallback": "productivity work"
+    },
+    "article-043": {
+      "query": "heatwave urban thermometer sun",
+      "fallback": "hot weather climate"
+    },
+    "article-044": {
+      "query": "artificial intelligence regulation law technology",
+      "fallback": "computer artificial intelligence"
+    },
+    "article-045": {
+      "query": "books reading library interior",
+      "fallback": "books library"
+    },
+    "article-046": {
+      "query": "Alzheimer neuroscience brain research",
+      "fallback": "Alzheimer medical research"
+    },
+    "article-047": {
+      "query": "endangered languages indigenous culture writing",
+      "fallback": "linguistics writing"
+    },
+    "article-048": {
+      "query": "Japanese and American culture cities",
+      "fallback": "Tokyo New York"
+    },
+    "article-049": {
+      "query": "supernova explosion galaxy telescope",
+      "fallback": "space galaxy"
+    },
+    "article-050": {
+      "query": "healthy breakfast oats fruit meal",
+      "fallback": "breakfast healthy food"
+    },
+    "article-051": {
+      "query": "astronomy physics dark matter universe",
+      "fallback": "outer space stars"
+    },
+    "article-052": {
+      "query": "university campus students",
+      "fallback": "university campus"
+    },
+    "article-053": {
+      "query": "SpaceX Starship rocket launch",
+      "fallback": "rocket launch"
+    },
+    "article-054": {
+      "query": "museum art gallery exhibition",
+      "fallback": "museum gallery"
+    },
+    "article-055": {
+      "query": "banking finance stock market Wall Street",
+      "fallback": "financial banking"
+    },
+    "article-056": {
+      "query": "Galapagos giant tortoise wildlife",
+      "fallback": "giant tortoise Galapagos"
+    },
+    "article-057": {
+      "query": "English grammar language books",
+      "fallback": "learning English books"
+    },
+    "article-058": {
+      "query": "Rosalind Franklin DNA double helix",
+      "fallback": "DNA genetics"
+    },
+    "article-059": {
+      "query": "SpaceX rocket explosion test",
+      "fallback": "rocket launch"
+    },
+    "article-060": {
+      "query": "world population overcrowded city",
+      "fallback": "crowded city"
+    },
+    "article-061": {
+      "query": "Martin Luther King civil rights march",
+      "fallback": "civil rights history"
+    },
+    "article-062": {
+      "query": "moth insect night light",
+      "fallback": "moth insect"
+    },
+    "article-063": {
+      "query": "seaweed kelp ocean underwater",
+      "fallback": "kelp forest"
+    },
+    "article-064": {
+      "query": "orchid flowers colorful botanical",
+      "fallback": "orchid flower"
+    },
+    "article-065": {
+      "query": "neural interfaces brain computer",
+      "fallback": "brain technology"
+    },
+    "article-066": {
+      "query": "wind turbines renewable electricity landscape",
+      "fallback": "wind turbine renewable"
+    },
+    "article-067": {
+      "query": "AI artificial intelligence risk research",
+      "fallback": "robot artificial intelligence"
+    },
+    "article-068": {
+      "query": "elephant animal social behavior wildlife",
+      "fallback": "elephants Africa"
+    },
+    "article-069": {
+      "query": "human skin ageing wrinkles elderly",
+      "fallback": "skin aging"
+    },
+    "article-070": {
+      "query": "London residential street community children",
+      "fallback": "London residential houses"
+    },
+    "article-071": {
+      "query": "Carl Sagan astronomy radio telescope",
+      "fallback": "radio telescope"
+    },
+    "article-072": {
+      "query": "clean drinking water child water",
+      "fallback": "drinking water poverty"
+    },
+    "article-073": {
+      "query": "rural countryside city skyline contrast",
+      "fallback": "rural countryside"
+    },
+    "article-074": {
+      "query": "older people senior citizen family",
+      "fallback": "elderly people"
+    },
+    "article-075": {
+      "query": "healthy food vegetables balanced diet",
+      "fallback": "healthy eating salad"
+    },
+    "article-076": {
+      "query": "anxiety mental health mindfulness meditation",
+      "fallback": "meditation mindfulness"
+    },
+    "article-077": {
+      "query": "brain cells microscope neurobiology",
+      "fallback": "brain neuroscience"
+    },
+    "ns-078": {
+      "query": "glacier summer heat climate change",
+      "fallback": "heatwave glacier"
+    },
+    "ns-079": {
+      "query": "hearing aids medical research cochlear",
+      "fallback": "hearing aid"
+    },
+    "ns-080": {
+      "query": "time hourglass clock science",
+      "fallback": "time clock"
+    },
+    "ns-081": {
+      "query": "dark matter spiral galaxy astrophysics",
+      "fallback": "galaxy stars"
+    },
+    "ns-082": {
+      "query": "artificial intelligence medical psychiatry",
+      "fallback": "neuroscience AI"
+    },
+    "ns-083": {
+      "query": "Artemis II Moon mission spacecraft",
+      "fallback": "moon spacecraft"
+    },
+    "ns-084": {
+      "query": "human fertility IVF laboratory",
+      "fallback": "embryo fertility medical"
+    },
+    "ns-085": {
+      "query": "Denisovan Neanderthal cave archaeology",
+      "fallback": "prehistoric caves"
+    },
+    "ns-086": {
+      "query": "children play science creativity",
+      "fallback": "children playing"
+    },
+    "ns-087": {
+      "query": "pregnancy early embryo medical science",
+      "fallback": "pregnancy medical"
+    },
+    "article-088": {
+      "query": "Antarctica melting ice glacier",
+      "fallback": "Antarctic ice"
+    },
+    "article-089": {
+      "query": "processed fast food snack junk food",
+      "fallback": "fast food"
+    },
+    "article-090": {
+      "query": "international airport airplane runway",
+      "fallback": "airport terminal"
+    },
+    "article-091": {
+      "query": "forest deforestation tree logging",
+      "fallback": "deforestation trees"
+    },
+    "article-092": {
+      "query": "hamburger fast food fries nutrition",
+      "fallback": "fast food burger"
+    },
+    "article-093": {
+      "query": "agricultural farming climate greenhouse",
+      "fallback": "agriculture farming"
+    },
+    "article-094": {
+      "query": "coffee cups beans espresso",
+      "fallback": "coffee mug"
+    },
+    "article-095": {
+      "query": "birthday party cake balloons",
+      "fallback": "birthday celebration"
+    },
+    "article-096": {
+      "query": "self talk mental health psychology",
+      "fallback": "person mirror"
+    },
+    "article-097": {
+      "query": "loneliness social exclusion friendship",
+      "fallback": "lonely person"
+    },
+    "article-098": {
+      "query": "microplastic pollution ocean plastic",
+      "fallback": "plastic pollution"
+    },
+    "article-099": {
+      "query": "sleep peaceful bedroom pillows",
+      "fallback": "sleeping bedroom"
+    },
+    "article-100": {
+      "query": "habit routine planner notebook pen",
+      "fallback": "daily habits planner"
+    },
+    "article-101": {
+      "query": "human brain neurons neural network",
+      "fallback": "brain neurons"
+    },
+    "article-102": {
+      "query": "winter walk snowy forest",
+      "fallback": "walking snow winter"
+    },
+    "article-103": {
+      "query": "financial money investment banking",
+      "fallback": "money currency"
+    },
+    "article-104": {
+      "query": "online classroom distance learning computer",
+      "fallback": "online learning"
+    },
+    "article-105": {
+      "query": "healthy diet gut microbiome vegetables",
+      "fallback": "healthy food gut"
+    },
+    "article-106": {
+      "query": "youth climate protest students",
+      "fallback": "climate activists protest"
+    },
+    "article-107": {
+      "query": "meditation relaxation mindfulness",
+      "fallback": "transcendental meditation"
+    },
+    "article-108": {
+      "query": "Galen ancient Greek Roman physician",
+      "fallback": "ancient Greek medicine"
+    },
+    "article-109": {
+      "query": "family summer picnic outdoor",
+      "fallback": "family park picnic"
+    },
+    "article-110": {
+      "query": "binary star system astronomy telescope",
+      "fallback": "stars telescope"
+    }
+  }
+}
