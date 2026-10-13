@@ -93,9 +93,9 @@
     return text+' _____';
   }
 
-  // Preserve the original sample-answer sentence only for Fill the Gap.
-  // Every other game receives a separate deterministic practice context:
-  // no copying the SAME source sentence into seven different game modes.
+  // Sample answers remain unchanged in the study library.
+  // Game rounds use separate practice examples, including Fill the Gap,
+  // to avoid the same answer sentence being reused for several expressions.
   const uniqueExamples=new Map();
   const usedContexts=new Map();
   function distinctPractice(w,slot){
@@ -113,7 +113,6 @@
     return output;
   }
   function sourceOrPractice(w,slot=0){
-    if(w?.sampleAnswerSource && slot>=300 && slot<400 && String(w.e||'').trim())return String(w.e);
     return distinctPractice(w,slot);
   }
 
