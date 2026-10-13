@@ -142,6 +142,20 @@ function onTestSubmitted() {
   const score = computeScore();
   const band = getBand(score);
   window.__READING_RESULT = { score, total: TOTAL, band };
+  try {
+    const event={type:'reading',title:'Reading Test '+(typeof TEST_ID !== 'undefined'?TEST_ID:'unknown'),score,total:TOTAL,band};
+    if(window.VividGoalsAdvanced) window.dispatchEvent(new CustomEvent('vivid:study-complete',{detail:event}));
+    else {
+      const uid=localStorage.getItem('vivid-ielts-current-user');
+      if(uid&&/^[a-f0-9-]{32,36}$/i.test(uid)) {
+        const k='vivid:goals:verified-activity:'+uid;
+        let q=[];try{q=JSON.parse(localStorage.getItem(k)||'[]')}catch{}
+        if(!Array.isArray(q))q=[];
+        q.push({id:'reading-'+Date.now()+'-'+Math.random().toString(36).slice(2),day:new Date().toLocaleDateString('en-CA'),type:'reading',category:'Reading',title:event.title,score,total:TOTAL,band,source:'automatic'});
+        localStorage.setItem(k,JSON.stringify(q.slice(-200)));
+      }
+    }
+  }catch(e){console.warn('[Goals] Reading bridge:',e?.message||e);}
 
   if (typeof VividDB !== 'undefined') {
     VividDB.saveReadingResult(typeof TEST_ID !== 'undefined' ? TEST_ID : 'unknown', score, TOTAL, band, null);
