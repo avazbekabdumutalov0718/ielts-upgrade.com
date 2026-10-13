@@ -64,6 +64,44 @@
    const diff=Math.ceil((t-new Date(localDate()+'T12:00:00'))/86400000);
    return diff;
  }
+ // Countdowns are anchored to Uzbekistan Standard Time (+05:00), not the browser's timezone.
+ // If no exam start hour is supplied, 00:00 on the selected date is the explicit default.
+ function clockTarget(date,time='00:00'){
+   const d=String(date||''),t=String(time||'00:00');
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(t))return NaN;
+   const utc=Date.parse(d+'T'+t+':00+05:00');
+   return Number.isFinite(utc)?utc:NaN;
+ }
+ function clockParts(target,now=Date.now()){
+   if(!Number.isFinite(target))return null;
+   const seconds=Math.max(0,Math.ceil((target-now)/1000));
+   return [Math.floor(seconds/86400),Math.floor(seconds%86400/3600),Math.floor(seconds%3600/60),seconds%60];
+ }
+ function clockHtml(parts){
+   if(!parts)return '<span class="ga-clock-error">Sanani tekshiring</span>';
+   return '<span class="ga-clock-parts">'+parts.map((v,i)=>
+     '<span class="ga-clock-unit"><b>'+String(v).padStart(2,'0')+'</b><small>'+['kun','soat','daqiqa','soniya'][i]+'</small></span>'
+   ).join('')+'</span>';
+ }
+ function clockNode(date,time){
+   return '<span class="ga-live-countdown" data-goals-date="'+esc(date)+'" data-goals-time="'+esc(time)+'" aria-label="Teskari sanoq: kun soat daqiqa soniya">'+
+     clockHtml(clockParts(clockTarget(date,time)))+'</span>';
+ }
+ function updateCountdowns(){
+   if(!authorized()||!api()?.isOpen())return;
+   const root=document.getElementById('vividGoalsPage');
+   if(!root)return;
+   const now=Date.now();
+   root.querySelectorAll('.ga-live-countdown[data-goals-date]').forEach(node=>{
+      const date=node.dataset.goalsDate,time=node.dataset.goalsTime;
+      const parts=clockParts(clockTarget(date,time),now);
+      const signature=parts?.join(':')||'invalid';
+      if(node.dataset.lastCountdown!==signature){
+        node.dataset.lastCountdown=signature;
+        node.innerHTML=clockHtml(parts);
+      }
+   });
+ }
  function stats(s){
    const real=localDate(),end=real>=START?real:START;
    const dayCount=real<START?0:Math.min(2000,Math.round((new Date(real+'T12:00:00')-new Date(START+'T12:00:00'))/86400000)+1);
@@ -90,9 +128,10 @@
  function meta(s){
    const st=stats(s);
    const examDates={...DEFAULT_DATES,...extra(s).settings?.examDates};
+   const examTimes=extra(s).settings?.examTimes||{};
    const countDown=Object.entries({ielts:'IELTS exam',sat:'SAT exam',turkish:'Turkish goal'}).map(([k,l])=>{
-     const days=dateDiff(examDates[k]);return '<div class="ga-deadline"><div><b>'+l+'</b><small>'+esc(examDates[k])+'</small></div><strong>'+(
-       days===null?'—':days<0?'Passed':days===0?'Today':days+' days')+'</strong></div>';
+     const date=examDates[k],time=examTimes[k]||'00:00';
+     return '<div class="ga-deadline"><div class="ga-deadline-label"><b>'+l+'</b><small>'+esc(date)+' · '+esc(time)+' (Toshkent UTC+5)</small></div>'+clockNode(date,time)+'</div>';
    }).join('');
    return '<section class="ga-panel"><h3>🗓 Smart Countdown</h3><div class="ga-deadlines">'+countDown+'</div></section>'+
    '<section class="ga-tiles">'+card('🔥','Study Streak',st.streak+' kun','Har kuni kamida 1 faoliyat')+
@@ -272,10 +311,10 @@
  function satPage(s){
    const day=selected(),sat=valDay(s,day),settings=extra(s);
    const date=settings.settings?.examDates?.sat||DEFAULT_DATES.sat;
-   const days=dateDiff(date);
+   const examTime=settings.settings?.examTimes?.sat||'00:00';
    const note=settings.satNotes?.[day]||'';
    const history=Object.entries(settings.satNotes||{}).filter(([d,t])=>d>=START&&String(t||'').trim()).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,15);
-   return '<section class="gs-hero gs-sat-hero"><span>SAT · MATH PREPARATION</span><h2>SAT Maths & English Math</h2><p>15-oktabrdan boshlangan alohida reja. Test sanasi: '+esc(date)+'</p><b class="gs-countdown">'+(days===null?'—':days<0?'Test sanasi o‘tgan':days+' kun qoldi')+'</b></section>'+
+   return '<section class="gs-hero gs-sat-hero"><span>SAT · MATH PREPARATION</span><h2>SAT Maths & English Math</h2><p>15-oktabrdan boshlangan alohida reja. Test sanasi: '+esc(date)+' · '+esc(examTime)+' (Toshkent UTC+5)</p><span class="gs-countdown">'+clockNode(date,examTime)+'</span></section>'+
     '<section class="ga-panel"><h3>📐 SAT Daily Checklist</h3><p class="ga-muted">PDFdagi aniq maqsadlar: 8–9-sinf matematikasini 1-noyabrgacha o‘rganish, 1-noyabrda darslarni boshlash va ikki kunda 30 ta English Math so‘z o‘rganish.</p>'+
       taskChecklist(s,['SAT & English Math'])+'</section>'+
     '<section class="gs-sat-milestones">'+
@@ -288,13 +327,18 @@
       '<button type="button" class="gp-history-month" data-gs-day="'+d+'"><b>'+d+'</b><small>'+esc(String(n).slice(0,100))+'</small></button>').join(''):'<p class="ga-muted">Saqlangan SAT qaydlar shu yerda ko‘rinadi.</p>')+'</div></section>';
  }
  function settings(s){
-   const e=extra(s),settings=e.settings||{},dates={...DEFAULT_DATES,...(settings.examDates||{})};
+   const e=extra(s),settings=e.settings||{},dates={...DEFAULT_DATES,...(settings.examDates||{})},times=settings.examTimes||{};
    const reflection=e.reflections?.[selected()]||{};
-   return '<section class="ga-panel"><h3>🗓 Editable exam deadlines</h3><form id="gaExamForm" class="ga-form">'+
-     inputField('IELTS exam','ielts','date','',''+dates.ielts, 'required')+
-     inputField('SAT exam','sat','date','',''+dates.sat,'required')+
-     inputField('Turkish goal','turkish','date','',''+dates.turkish,'required')+
-     '<button type="submit">Save dates</button></form></section>'+
+   return '<section class="ga-panel"><h3>🗓 Imtihon sanasi va aniq boshlanish vaqti</h3>'+
+     '<p class="ga-muted">Teskari sanoq Toshkent vaqti (UTC+5) bo‘yicha. Vaqt ko‘rsatilmasa, 00:00 hisoblanadi. Haqiqiy imtihon boshlanish vaqtini bilganingizda belgilang.</p>'+
+     '<form id="gaExamForm" class="ga-form">'+
+     inputField('IELTS sana','ielts','date','',''+dates.ielts,'required')+
+     inputField('IELTS soat','ieltsTime','time','',times.ielts||'00:00','required')+
+     inputField('SAT sana','sat','date','',''+dates.sat,'required')+
+     inputField('SAT soat','satTime','time','',times.sat||'00:00','required')+
+     inputField('Turkish sana','turkish','date','',''+dates.turkish,'required')+
+     inputField('Turkish soat','turkishTime','time','',times.turkish||'00:00','required')+
+     '<button type="submit">Sanalarni saqlash</button></form></section>'+
     '<section class="ga-panel"><h3>🧭 Daily Reflection · 3 savol</h3><p class="ga-muted">Sana: '+selected()+'</p>'+
       '<form id="gaReflectionForm" class="ga-reflection">'+
       '<label>1. Bugun nima o‘rgandim?<textarea name="learned" maxlength="1600" rows="3">'+esc(reflection.learned||'')+'</textarea></label>'+
@@ -321,6 +365,7 @@
     '<section class="ga-screen" '+(tab!=='settings'?'hidden':'')+'>'+settings(s)+'</section>';
    root.querySelector('.goals-summary')?.after(area);
    if(tab==='focus'){const cat=document.getElementById('gaFocusCat');if(cat)cat.value=focused?.category||focusCategory;}
+   updateCountdowns();
    ingestPending();
  }
  function saveSession(cat,seconds,rating,source){
@@ -425,7 +470,7 @@
      const n=clamp(d.minutes,1,1440);if(!n)return;
      update(x=>{initialize(x);x.sessions.push({id:id(),day,category:SKILLS.includes(d.category)?d.category:'Reading',minutes:mins(n),rating:Math.round(clamp(d.rating,1,10)),source:'manual',at:new Date().toISOString()})});
    }else if(form.id==='gaExamForm'){
-     update(x=>{initialize(x);x.settings.examDates={ielts:String(d.ielts),sat:String(d.sat),turkish:String(d.turkish)}});
+     update(x=>{initialize(x);x.settings.examDates={ielts:String(d.ielts),sat:String(d.sat),turkish:String(d.turkish)};x.settings.examTimes={ielts:String(d.ieltsTime||'00:00'),sat:String(d.satTime||'00:00'),turkish:String(d.turkishTime||'00:00')};});
    }else if(form.id==='gaReflectionForm'){
      update(x=>{initialize(x);x.reflections[day]={learned:String(d.learned||'').slice(0,1600),hard:String(d.hard||'').slice(0,1600),improve:String(d.improve||'').slice(0,1600)}});
    }else if(form.id==='gaSATNotes'){
@@ -500,6 +545,6 @@
  document.addEventListener('click',onClick);
  document.addEventListener('change',onChange);
  document.addEventListener('submit',onSubmit);
- focusTicker=setInterval(syncClock,1000);
+ focusTicker=setInterval(()=>{syncClock();updateCountdowns();},1000);
  window.VividGoalsAdvanced={version:'g3',selectedFeatures:23,startDate:START};
 })();
