@@ -32,7 +32,7 @@
    if(required){
     let got=clamp(d.counts?.[task.id],0,99999);
     if(task.rolling)got+=clamp(valDay(s,offset(day,-1)).counts?.[task.id],0,99999);
-    return got>=required;
+    return !!d.checks?.[task.id]||got>=required;
    }
    return !!d.checks?.[task.id];
  };
@@ -227,9 +227,8 @@
       '<div class="gs-skill-progress"><i style="width:'+Math.round(100*count/group.tasks.length)+'%"></i></div>'+
       '<div class="gs-skill-tasks">'+group.tasks.map(t=>{
         const enabled=!!t.target,goal=Number(extra(s).targets?.[t.id])||t.target||0,value=Number(valDay(s,day).counts?.[t.id])||0;
-        return '<div class="gs-skill-task"><div class="gs-task-left">'+(enabled?'<span class="gs-count-circle '+(isDone(s,day,t)?'on':'')+'">'+(isDone(s,day,t)?'✓':'')+'</span>':
-          '<input type="checkbox" data-goal-check="'+t.id+'" '+(isDone(s,day,t)?'checked':'')+' aria-label="'+esc(t.name)+'">')+
-          '<span>'+esc(extra(s).names?.[t.id]||t.name)+'</span></div>'+
+        return '<div class="gs-skill-task"><label class="gs-task-left"><input type="checkbox" data-goal-check="'+t.id+'" '+(isDone(s,day,t)?'checked':'')+' aria-label="'+esc(t.name)+'">'+
+          '<span>'+esc(extra(s).names?.[t.id]||t.name)+'</span></label>'+
           (enabled?'<label class="gs-task-count"><input type="number" data-goal-count="'+t.id+'" min="0" max="99999" value="'+value+'"> / '+goal+'</label>':'')+
           '<span class="goals-proof-anchor" data-proof-task="'+t.id+'" data-proof-day="'+day+'"></span></div>';
       }).join('')+'</div></section>';
