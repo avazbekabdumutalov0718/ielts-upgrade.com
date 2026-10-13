@@ -193,3 +193,12 @@
  .ar-reading-size{font-size:10px}
  .ar-page-meter{flex-wrap:wrap}
 }
+
+
+/* No duplicated stock photos: display an honest editorial placeholder if Commons has no licensed match. */
+.ar-photo-unavailable{background:linear-gradient(125deg,#eeeaf6,#dad2ea);display:flex!important;
+ flex-direction:column;align-items:flex-start;justify-content:flex-end;padding:17px 18px;
+ color:#382354}
+.ar-no-photo-title{font-size:clamp(16px,1.2vw,19px);font-weight:850;line-height:1.25;max-width:100%;
+ display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ar-no-photo-subtitle{font-size:10px;font-weight:650;color:#685c7c;letter-spacing:.02em;margin-top:6px}
