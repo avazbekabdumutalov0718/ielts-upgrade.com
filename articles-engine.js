@@ -385,7 +385,10 @@ function collocMarkup(){
 }
 function gamesMarkup(){
  const n=(rec().cart?.length||0)+(active.collocations?.length||0);
- return '<section class="ar-games"><h2>7 learning games · '+n+' expressions</h2><p>The same word basket and article collocations are used across all seven games.</p><div class="ar-game-grid">'+gameTitles.map((t,i)=>'<button data-game="'+i+'"><span>0'+(i+1)+'</span><strong>'+t+'</strong></button>').join('')+'</div><div id="ar-game-play"></div></section>';
+ const descriptions=['Kartani aylantiring va iborani yodlaganingizni belgilang.','Iboralarni ularning o‘zbekcha ma’nolari bilan juftlang.','Tarjimaga qarab inglizcha iborani yozing.','Maqoladagi gapning bo‘sh joyini to‘ldiring.','Talaffuzni tinglang va mos tarjimani tanlang.','To‘g‘ri tarjimani variantlar orasidan toping.','60 soniyada imkon qadar ko‘p to‘g‘ri javob bering.'];
+ const icons=['▣','⌘','⌨','✎','♫','☑','ϟ'];
+ const state=rec().games||{};
+ return '<section class="ar-games"><div class="ar-games-heading"><div><h2>Collocation o‘yinlari</h2><p>Ushbu maqoladagi '+n+' ta ibora · 7 xil interaktiv mashq. Har bir o‘yin natijasi alohida saqlanadi.</p></div><span class="ar-games-pill">7 xil mashq</span></div><div class="ar-game-grid">'+gameTitles.map((t,i)=>'<button type="button" class="ar-game-card ar-game-card-'+i+'" data-game="'+i+'" aria-label="'+E(t)+' o‘yinini boshlash"><span class="ar-game-icon" aria-hidden="true">'+icons[i]+'</span><strong>'+E(t)+'</strong><span class="ar-game-description">'+E(descriptions[i])+'</span><span class="ar-game-progress">'+(state[i]?.attempts?'Eng yaxshi natija: '+state[i].best+' / '+state[i].total:'Boshlash →')+'</span></button>').join('')+'</div><div id="ar-game-play" aria-live="polite"></div></section>';
 }
 function speedMarkup(){return '<section class="ar-speedbox"><h2>⏱ Speed reading</h2><p>Start the clock and read the section at a steady pace. The result is approximate words per minute.</p><div class="ar-speed-controls"><button id="ar-timer">'+(running?'Pause':'Start')+'</button><button id="ar-reset">Reset</button><strong id="ar-time">'+Math.floor(stopwatch/60)+':'+String(stopwatch%60).padStart(2,'0')+'</strong><strong id="ar-wpm">'+(stopwatch?Math.round((active.words||0)/(stopwatch/60)):0)+' WPM*</strong></div><small>*WPM estimates are meaningful only after you have read the whole article.</small></section>'}
 function isUnderstandingMCQ(q){
@@ -573,6 +576,8 @@ function openGame(mode) {
   if (!Number.isInteger(mode) || mode < 0 || mode > 6) return;
   if (activeGame?.timer) clearInterval(activeGame.timer);
   const dest=qs('#ar-game-play');if(!dest)return;
+  qsa('.ar-game-card').forEach(b=>{b.classList.toggle('is-active',Number(b.dataset.game)===mode);b.setAttribute('aria-pressed',String(Number(b.dataset.game)===mode));});
+  dest.scrollIntoView({behavior:'smooth',block:'center'});
   qs('#ar-rush-time')?.remove();
   const seen=new Set();
   const pool=gameWords().filter(w=>{const key=norm(w.w);if(!key||!w.u||seen.has(key))return false;seen.add(key);return true});
