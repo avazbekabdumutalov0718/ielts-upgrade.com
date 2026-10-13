@@ -55,6 +55,27 @@ async function arLoadPhotoQueries(){
   if(r.ok){const j=await r.json();arPhotoQueries=j.articles||{}}
  }catch(err){console.warn('Could not load image search topics',err)}
 }
+
+async function arLoadEditorialTitles(){
+ try{
+  const r=await fetch('articles-titles.json?v=20261013-v18-title-fixes');
+  if(!r.ok)return;
+  const j=await r.json();
+  for(const a of db){const t=j.titles?.[a.id];if(t){a.originalTitle=a.originalTitle||a.title;a.title=t}}
+ }catch(e){console.warn('Title improvements unavailable',e)}
+}
+function arLengthLabel(a){
+ const w=Number(a.words)||wordsOf((a.body||[]).join(' ')).length;
+ if(a.kind==='magazine')return 'Full issue';
+ return w<=700?'Short':w<=1600?'Medium':'Long';
+}
+function arReadingMinutes(a){
+ const w=Number(a.words)||wordsOf((a.body||[]).join(' ')).length;
+ return Math.max(1,Math.ceil(w/225));
+}
+function arSizeMeta(a){
+ return '<span class="ar-reading-size">'+E(arLengthLabel(a))+' · ~'+arReadingMinutes(a)+' min read</span>';
+}
 function articleVisual(a){
  const spec=arPhotoQueries[a.id]||{query:String(a.title||'').replace(/[^a-zA-Z ]/g,' ').slice(0,72),fallback:'scientific research'};
  return '<span class="ar-cover ar-photo-loading" data-photo-id="'+E(a.id)+'" role="img" aria-label="'+E('Photo: '+spec.query)+'">'+
@@ -203,7 +224,7 @@ async function applyReviewedMCQ(){
 }
 function buildIndex(){
  const magazine=db.filter(a=>a.kind==='magazine'),articles=db.filter(a=>a.kind==='article');
- const cards=arr=>arr.map(a=>{const p=progress[a.id]||{};return '<article class="ar-article"><button type="button" class="ar-card-open" data-open="'+E(a.id)+'">'+articleVisual(a)+'<span class="ar-card-row">'+formatLevel(a.level)+'<small>'+E(a.words||0)+' words · '+E(a.pages||1)+' pages</small></span><strong>'+sanitizeTitle(a.title)+'</strong><span class="ar-article-footer">'+(p.complete?'✓ Completed':p.stage?'Continue step '+p.stage:'Start reading')+' <span aria-hidden="true">→</span></span></button><a class="ar-photo-credit" data-photo-credit="'+E(a.id)+'" target="_blank" rel="noopener noreferrer" hidden></a></article>'}).join('');
+ const cards=arr=>arr.map(a=>{const p=progress[a.id]||{};return '<article class="ar-article"><button type="button" class="ar-card-open" data-open="'+E(a.id)+'">'+articleVisual(a)+'<span class="ar-card-row">'+formatLevel(a.level)+'<small>'+E(a.words||0)+' words · '+E(a.pages||1)+' pages</small></span><strong>'+sanitizeTitle(a.title)+'</strong>'+arSizeMeta(a)+'<span class="ar-article-footer">'+(p.complete?'✓ Completed':p.stage?'Continue step '+p.stage:'Start reading')+' <span aria-hidden="true">→</span></span></button><a class="ar-photo-credit" data-photo-credit="'+E(a.id)+'" target="_blank" rel="noopener noreferrer" hidden></a></article>'}).join('');
  const filtered=articles.filter(a=>(level==='all'||a.level===level)&&(!query||norm(a.title).includes(norm(query))));
  const mags=magazine.filter(a=>(level==='all'||a.level===level)&&(!query||norm(a.title).includes(norm(query))));
  return '<section class="ar-shell"><div class="ar-header"><div><p class="ar-overline">SPEAKING & VOCAB · READING LIBRARY</p><h1>Articles</h1><p>Read, highlight, learn vocabulary and practise speaking & writing expressions through five stages.</p></div><div class="ar-counter"><b>'+articles.length+'</b><span>Articles</span><b>'+magazine.length+'</b><span>New Scientist issues</span></div></div>'+
@@ -237,7 +258,7 @@ function tokenMarkup(par,pi){
 function listChunks(){const all=active?.body||[];const size=active.kind==='magazine'?14:40;const max=Math.max(0,Math.ceil(all.length/size)-1);block=Math.min(block,max);return {start:block*size,end:Math.min(all.length,(block+1)*size),pages:max+1}}
 function readingMarkup(){
  const c=listChunks(),body=(active.body||[]).slice(c.start,c.end);
- return '<div class="ar-page-meter"><span>Reading section '+(block+1)+' / '+c.pages+'</span><span>'+E(active.words||0)+' original words</span></div>'+
+ return '<div class="ar-page-meter"><span>Reading section '+(block+1)+' / '+c.pages+'</span><span>'+E(active.words||0)+' words · '+E(active.pages||1)+' pages · '+E(arLengthLabel(active))+' · ~'+arReadingMinutes(active)+' min</span></div>'+
  '<article id="ar-original" class="ar-reading'+(stage===5?' ar-speed':'')+'">'+body.map((p,i)=>'<p class="ar-paragraph" data-par="'+(c.start+i)+'">'+tokenMarkup(String(p),c.start+i)+'</p>').join('')+'</article>'+
  (c.pages>1?'<div class="ar-pager"><button data-page="-1" '+(!block?'disabled':'')+'>← Previous pages</button><span>'+(block+1)+' / '+c.pages+'</span><button data-page="1" '+(block>=c.pages-1?'disabled':'')+'>Next pages →</button></div>':'');
 }
@@ -278,7 +299,7 @@ function questionMarkup(){
  '<div class="ar-question-group"><h3>Multiple choice</h3>'+mc.map((x,i)=>'<div class="ar-question"><p><b>'+(i+6)+'.</b> '+E(x.text)+'</p>'+(x.options||[]).map((o,j)=>'<label><input type="radio" name="mc-'+i+'" value="'+j+'" '+(chosenAnswers['mc'+i]===String(j)?'checked':'')+'> '+E(o)+'</label>').join('')+'</div>').join('')+'</div><button id="ar-grade" class="ar-primary">Check answers</button><div id="ar-score"></div></section>';
 }
 function renderArticle(){
- let r=rec();return '<section class="ar-shell ar-study"><button id="ar-back" class="ar-back">← All articles</button><div class="ar-studytitle">'+formatLevel(active.level)+' <small>'+(active.kind==='magazine'?'NEW SCIENTIST MAGAZINE':'ARTICLE')+' · '+E(active.pages||1)+' pages</small><h1>'+sanitizeTitle(active.title)+'</h1></div>'+stepper()+
+ let r=rec();return '<section class="ar-shell ar-study"><button id="ar-back" class="ar-back">← All articles</button><div class="ar-studytitle">'+formatLevel(active.level)+' <small>'+(active.kind==='magazine'?'NEW SCIENTIST MAGAZINE':'ARTICLE')+' · '+E(active.pages||1)+' pages · '+E(active.words||0)+' words · ~'+arReadingMinutes(active)+' min</small><h1>'+sanitizeTitle(active.title)+'</h1></div>'+stepper()+
  '<div class="ar-stage-info"><h2>Step '+stage+' / 5 · '+stageNames[stage-1]+'</h2><p>'+stageText()+'</p>'+(stage>=3?'<button type="button" id="ar-export-pdf" class="ar-primary">⬇ Download saved words PDF (English only)</button><span class="ar-export-count"> · '+(rec().cart||[]).length+' saved</span>':'')+'</div>'+
  (active.sourceQuality?'<p class="ar-warning">Eslatma: ushbu manbaning ayrim sahifalari skanerlangan yoki PDF ustunlari aralash ajratilgan. Matn va testlar asl PDF bilan qo‘shimcha tekshirilmoqda.</p>':'')+
  (stage===5&&!active.quizQuality?'<p class="ar-warning">Manbaning ayrim joylari OCR orqali noto‘g‘ri ajratilgan bo‘lishi mumkin. Savol dalillarini asl PDF bilan tekshiring.</p>':'')+
@@ -598,6 +619,6 @@ document.addEventListener('mousemove',e=>{mouse={x:e.clientX,y:e.clientY}}, {pas
 document.addEventListener('click',e=>{const nav=e.target.closest('#primaryNav [data-view="articles"]');if(!nav)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();history.pushState(null,'','#articles');activate()},true);
 document.addEventListener('click',e=>{if(tip&&!e.target.closest('.ar-tooltip')&&!e.target.closest('[data-word]')&&!e.target.closest('[data-colloc]'))closeTip()},true);
 window.addEventListener('popstate',()=>{if(location.hash.startsWith('#articles'))activate()});
-document.addEventListener('DOMContentLoaded',async()=>{await initData();await Promise.all([applyReviewedMCQ(),arLoadPhotoQueries()]);if(location.hash.startsWith('#articles'))setTimeout(activate,400)});
+document.addEventListener('DOMContentLoaded',async()=>{await initData();await Promise.all([applyReviewedMCQ(),arLoadPhotoQueries(),arLoadEditorialTitles()]);if(location.hash.startsWith('#articles'))setTimeout(activate,400)});
 window.VividArticles={open:activate,importData:arr=>{db=cleanContent(arr);activate()},getLibrary:()=>db};
 })();
