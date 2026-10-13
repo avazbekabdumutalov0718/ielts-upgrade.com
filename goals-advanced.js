@@ -2,10 +2,10 @@
  'use strict';
  /* Advanced Goals adds a private dashboard to the existing VividGoals tracker.
     It never runs as a public user and delegates account persistence to Goals + Supabase RLS. */
- const OWNER='fenric18@gmail.com', EVENT_TYPES=new Set(['reading','article','listening','speaking','writing','mock']);
+ const OWNER='fenric18@gmail.com', START='2026-10-15', EVENT_TYPES=new Set(['reading','article','listening','speaking','writing','mock']);
  const SKILLS=['Reading','Listening','Speaking','Writing','SAT','General English','Turkish'];
  const LABELS={reading:'Reading',article:'Reading',listening:'Listening',speaking:'Speaking',writing:'Writing',mock:'Mock'};
- const TABS=[['dashboard','Dashboard'],['planner','Planner'],['focus','Focus & Sessions'],['analytics','Analytics'],['ielts','IELTS & SAT'],['settings','Settings & Export']];
+ const TABS=[['dashboard','Overview'],['planner','Planner'],['focus','Focus'],['analytics','Progress'],['ielts','IELTS'],['sat','SAT'],['settings','Settings & Export']];
  const DEFAULT_DATES={ielts:'2026-12-07',sat:'2027-03-06',turkish:'2027-05-01'};
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number(v)||0));
@@ -19,7 +19,7 @@
  const api=()=>window.VividGoals;
  const authorized=()=>!!(window.VocabCloud?.enabled&&window.VocabCloud?.userId&&String(window.VocabCloud?.email||'').trim().toLowerCase()===OWNER);
  const current=()=>api()?.get();
- const selected=()=>api()?.getDay()||localDate();
+ const selected=()=>api()?.getDay()||(localDate()<START?START:localDate());
  const extra=s=>s?.extras||{};
  const sessions=s=>Array.isArray(extra(s).sessions)?extra(s).sessions:[];
  const logs=s=>Array.isArray(extra(s).activities)?extra(s).activities:[];
@@ -37,10 +37,10 @@
    return !!d.checks?.[task.id];
  };
  const completed=(s,day)=>knownTasks().filter(t=>isDone(s,day,t)).length;
- const activeDay=(s,day)=>completed(s,day)>0||duration(s,day)>0||logs(s).some(x=>x.day===day);
+ const activeDay=(s,day)=>day>=START&&(completed(s,day)>0||duration(s,day)>0||logs(s).some(x=>x.day===day));
  const sum=(arr,fn)=>arr.reduce((a,x)=>a+fn(x),0);
  let tab='dashboard',weekCursor=0,focused=null,focusCategory='Reading',focusElapsed=0,focusSince=0,focusTicker=null;
- let reminderPending=false, chartPeriod=30, editingDay=null;
+ let reminderPending=false, chartPeriod=30, editingDay=null, periodMode='week', periodAnchor='2026-10-15';
  function appendStyleSafe(){
    if(document.getElementById('goalsAdvancedStyles'))return;
  }
@@ -65,19 +65,21 @@
    return diff;
  }
  function stats(s){
-   const end=localDate(),days=Array.from({length:365},(_,i)=>offset(end,-364+i));
-   const today=completed(s,end),yesterday=completed(s,offset(end,-1));
-   let streak=0,day=activeDay(s,end)?end:offset(end,-1);
-   while(activeDay(s,day)&&streak<365){streak++;day=offset(day,-1)}
+   const real=localDate(),end=real>=START?real:START;
+   const dayCount=real<START?0:Math.min(2000,Math.round((new Date(real+'T12:00:00')-new Date(START+'T12:00:00'))/86400000)+1);
+   const days=Array.from({length:dayCount},(_,i)=>offset(START,i));
+   const today=real>=START?completed(s,real):0,yesterday=real>START?completed(s,offset(real,-1)):0;
+   let streak=0,day=activeDay(s,real)?real:offset(real,-1);
+   while(day>=START&&activeDay(s,day)&&streak<dayCount){streak++;day=offset(day,-1)}
    const covered=days.filter(d=>activeDay(s,d));
    const taskTotal=sum(days,d=>completed(s,d));
-   const allMinutes=sum(sessions(s),x=>mins(x.minutes));
+   const allMinutes=sum(sessions(s).filter(x=>x.day>=START),x=>mins(x.minutes));
    const best=covered.map(d=>({day:d,score:completed(s,d)*15+duration(s,d),tasks:completed(s,d),minutes:duration(s,d)})).sort((a,b)=>b.score-a.score||b.day.localeCompare(a.day))[0];
-   const longest=sessions(s).reduce((best,x)=>mins(x.minutes)>mins(best?.minutes)?x:best,null);
+   const longest=sessions(s).filter(x=>x.day>=START).reduce((best,x)=>mins(x.minutes)>mins(best?.minutes)?x:best,null);
    const maxTime=days.map(d=>({day:d,minutes:duration(s,d)})).sort((a,b)=>b.minutes-a.minutes)[0];
-   const cats=Object.fromEntries(SKILLS.map(k=>[k, sum(sessions(s).filter(x=>x.category===k),x=>mins(x.minutes))]));
-   const thisWeek=Array.from({length:7},(_,i)=>offset(end,-6+i));
-   const lastWeek=Array.from({length:7},(_,i)=>offset(end,-13+i));
+   const cats=Object.fromEntries(SKILLS.map(k=>[k,sum(sessions(s).filter(x=>x.day>=START&&x.category===k),x=>mins(x.minutes))]));
+   const thisWeek=Array.from({length:7},(_,i)=>offset(end,-6+i)).filter(d=>d>=START&&d<=real);
+   const lastWeek=Array.from({length:7},(_,i)=>offset(end,-13+i)).filter(d=>d>=START&&d<=real);
    return {end,days,today,yesterday,streak,covered,taskTotal,allMinutes,best,longest,maxTime,cats,
     thisWeek,lastWeek,weekTasks:sum(thisWeek,d=>completed(s,d)),prevWeekTasks:sum(lastWeek,d=>completed(s,d)),
     weekMinutes:sum(thisWeek,d=>duration(s,d)),prevWeekMinutes:sum(lastWeek,d=>duration(s,d))};
@@ -99,12 +101,14 @@
     card('🏆','Personal Record',st.longest?hh(st.longest.minutes):'—','Eng uzun sessiya')+'</section>';
  }
  function heatmap(s){
-   const st=stats(s),weekdays=['Du','Se','Ch','Pa','Ju','Sh','Ya'];
+   const st=stats(s);
    const cells=st.days.map(d=>{
      const c=completed(s,d),m=duration(s,d),a=activeDay(s,d),lvl=!a?0:m>=180||c>=15?4:m>=90||c>=10?3:m>=30||c>=5?2:1;
      return '<span class="ga-heat ga-h'+lvl+'" title="'+d+' · '+c+' tasks · '+m+' min" aria-label="'+d+': '+c+' tasks '+m+' minutes"></span>';
    }).join('');
-   return '<section class="ga-panel ga-heat-panel"><div class="ga-panel-head"><h3>🟩 365-Day Heatmap</h3><span>'+st.covered.length+' active days</span></div><div class="ga-heat-scroll"><div class="ga-heat-grid">'+cells+'</div></div><div class="ga-heat-legend">Less <i class="ga-h0"></i><i class="ga-h1"></i><i class="ga-h2"></i><i class="ga-h3"></i><i class="ga-h4"></i> More</div></section>';
+   return '<section class="ga-panel ga-heat-panel"><div class="ga-panel-head"><h3>📅 15-oktabrdan boshlab faoliyat</h3><span>'+st.covered.length+' faol kun · '+st.days.length+' kun kuzatildi</span></div>'+
+   (st.days.length?'<div class="ga-heat-scroll"><div class="ga-heat-grid">'+cells+'</div></div><div class="ga-heat-legend">Kam <i class="ga-h0"></i><i class="ga-h1"></i><i class="ga-h2"></i><i class="ga-h3"></i><i class="ga-h4"></i> Ko‘p</div>':
+    '<p class="ga-muted">Tracker 2026-yil 15-oktabrda boshlanadi. Shu sanadan keyingi barcha kunlar saqlanib boradi.</p>')+'</section>';
  }
  function comparison(s){
    const st=stats(s),selectedDay=selected(),past=offset(selectedDay,-1);
@@ -370,7 +374,7 @@
  function queueAuto(ev){
    if(!authorized())return;
    const raw=ev?.detail||{},type=String(raw.type||'').toLowerCase();
-   if(!EVENT_TYPES.has(type))return;
+   if(!EVENT_TYPES.has(type)||localDate()<START)return;
    const uid=window.VocabCloud?.userId;if(!uid)return;
    const item={id:id(),day:localDate(),type,category:LABELS[type]||type,title:String(raw.title||type).slice(0,100),
      band:raw.band===undefined?'':String(raw.band).slice(0,20),score:raw.score===undefined?'':clamp(raw.score,0,999),
