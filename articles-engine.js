@@ -29,16 +29,160 @@ async function initData(){
  // User can locally import the prepared article data while the GitHub upload is pending.
  try{const raw=localStorage.getItem(CACHE);if(raw)db=cleanContent(JSON.parse(raw).articles)}catch{}
 }
+
+const AR_PHOTO_CACHE_KEY='vivid_articles_wikimedia_images_v1';
+let arPhotoQueries={},arPhotoCache={},arPhotoObserver=null,arPhotoQueue=[],arPhotoActive=0;
+try{arPhotoCache=JSON.parse(localStorage.getItem(AR_PHOTO_CACHE_KEY)||'{}')}catch{arPhotoCache={}}
+const AR_FALLBACK_PHOTOS={
+ science:'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=78',
+ nature:'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=900&q=78',
+ space:'https://upload.wikimedia.org/wikipedia/commons/9/97/The_Earth_seen_from_Apollo_17.jpg',
+ health:'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=900&q=78',
+ books:'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=900&q=78',
+ technology:'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=78'
+};
+function arTopicImageType(q){
+ if(/space|planet|moon|galaxy|star|cosmos|astronaut|telescope|asteroid|supernova|satellite|rocket/i.test(q))return 'space';
+ if(/forest|plant|climate|animal|wildlife|ocean|seaweed|orchid|bird|heatwave|antarct|pollution|agriculture|glacier|tree|elephant|octopus/i.test(q))return 'nature';
+ if(/health|sleep|medical|brain|ADHD|fitness|diabetes|alzheim|dementia|hospital|mindfulness|meditation|food|coffe|neurolog|psycholog|pregnan|embryo/i.test(q))return 'health';
+ if(/computer|artificial intelligence|AI|robot|digital|chip|hacker|internet|online|cyber/i.test(q))return 'technology';
+ if(/books|Roman|Greece|Auschwitz|history|culture|museum|Alexander|language|education|university|samurai/i.test(q))return 'books';
+ return 'science';
+}
+async function arLoadPhotoQueries(){
+ try{
+  const r=await fetch('articles-images.json?v=20261013-all-110-photos',{cache:'force-cache'});
+  if(r.ok){const j=await r.json();arPhotoQueries=j.articles||{}}
+ }catch(err){console.warn('Could not load image search topics',err)}
+}
 function articleVisual(a){
- const name=norm(a.title+' '+(a.body||[]).slice(0,2).join(' ').slice(0,300));
- let icon='📖',category='Reading';
- if(/health|wellness|food|diet|brain|sleep|medical|medicine|body|disease/.test(name)){icon='🧬';category='Health & Life'}
- else if(/space|universe|planet|moon|mars|galaxy|solar|star/.test(name)){icon='🪐';category='Space'}
- else if(/climat|environment|planet|nature|ocean|earth|wildlife|animal/.test(name)){icon='🌿';category='Nature'}
- else if(/technology|robot|computer|artificial intelligence|digital|internet/.test(name)){icon='⚙️';category='Technology'}
- else if(/history|ancient|culture|society|people/.test(name)){icon='🏛️';category='Culture'}
- else if(/physics|energy|chemical|research|scientist|experiment/.test(name)){icon='🔬';category='Science'}
- return '<span class="ar-cover" role="img" aria-label="'+E(category)+' illustration"><span class="ar-cover-pattern" aria-hidden="true">◌</span><span class="ar-cover-icon" aria-hidden="true">'+icon+'</span><span class="ar-cover-category">'+E(category)+'</span></span>';
+ const spec=arPhotoQueries[a.id]||{query:String(a.title||'').replace(/[^a-zA-Z ]/g,' ').slice(0,72),fallback:'scientific research'};
+ return '<span class="ar-cover ar-photo-loading" data-photo-id="'+E(a.id)+'" role="img" aria-label="'+E('Photo: '+spec.query)+'">'+
+ '<span class="ar-cover-shine" aria-hidden="true"></span>'+
+ '<span class="ar-photo-loading-label">Photo · Wikimedia Commons</span></span>';
+}
+function arPersistPhotoCache(){
+ try{
+  const entries=Object.entries(arPhotoCache);
+  if(entries.length>110)entries.splice(0,entries.length-110);
+  localStorage.setItem(AR_PHOTO_CACHE_KEY,JSON.stringify(Object.fromEntries(entries)));
+ }catch{}
+}
+function arCleanCredit(str){
+ if(!str)return '';
+ const tmp=document.createElement('div');tmp.textContent=String(str).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ');
+ return tmp.textContent.replace(/\s+/g,' ').trim().slice(0,100);
+}
+function arImageExists(url){
+ return /^https:\/\/upload\.wikimedia\.org\//.test(String(url||''));
+}
+async function arSearchCommons(searchTerm){
+ // Anonymous, CORS-enabled API; images remain hosted by Wikimedia Commons.
+ const params=new URLSearchParams({
+  action:'query',generator:'search',gsrsearch:searchTerm+' filetype:bitmap',
+  gsrnamespace:'6',gsrlimit:'12',prop:'imageinfo',
+  iiprop:'url|size|mime|extmetadata',iiurlwidth:'850',
+  iiextmetadatafilter:'LicenseShortName|Artist|LicenseUrl',
+  format:'json',origin:'*'
+ });
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),12000);
+ try{
+  const response=await fetch('https://commons.wikimedia.org/w/api.php?'+params,{signal:controller.signal,mode:'cors',credentials:'omit'});
+  if(!response.ok)throw Error('Commons HTTP '+response.status);
+  const json=await response.json();
+  const pages=Object.values(json.query?.pages||{});
+  const terms=searchTerm.toLowerCase().split(/\s+/).filter(w=>w.length>3);
+  const candidates=pages.map(p=>{
+   const ii=p.imageinfo?.[0];const license=ii?.extmetadata?.LicenseShortName?.value||'';
+   const okLicense=/^(?:CC ?0|CC BY(?:-SA)?|public domain|PD-)/i.test(license);
+   const url=ii?.thumburl||ii?.url||'';
+   const width=Number(ii?.width||0),height=Number(ii?.height||0);
+   const ratio=height?width/height:0;
+   const title=String(p.title||'').toLowerCase();
+   const relevance=terms.filter(t=>title.includes(t)).length;
+   return {url,license,width,height,ratio,relevance,
+    artist:arCleanCredit(ii?.extmetadata?.Artist?.value),
+    source:ii?.descriptionurl||'https://commons.wikimedia.org/wiki/'+encodeURIComponent(p.title||'')};
+  }).filter(x=>arImageExists(x.url)&&x.width>=680&&x.height>=390&&x.ratio>=1.22&&x.ratio<=4.5&&/image\//.test('image/')&&/^(?:CC ?0|CC BY(?:-SA)?|public domain|PD-)/i.test(x.license));
+  candidates.sort((a,b)=>b.relevance-a.relevance||Math.abs(a.ratio-1.8)-Math.abs(b.ratio-1.8));
+  return candidates[0]||null;
+ }finally{clearTimeout(timeout)}
+}
+function arPhotoFallback(id,spec){
+ const type=arTopicImageType(spec.query+' '+spec.fallback);
+ return {url:AR_FALLBACK_PHOTOS[type],source:type==='space'
+  ?'https://commons.wikimedia.org/wiki/File:The_Earth_seen_from_Apollo_17.jpg'
+  :'https://unsplash.com/s/photos/'+encodeURIComponent(spec.fallback||type),
+  artist:type==='space'?'NASA':'Unsplash photographers',license:type==='space'?'Public domain':'Unsplash License',fallback:true};
+}
+async function arResolvePhoto(id){
+ const spec=arPhotoQueries[id]||{query:'science research',fallback:'science'};
+ for(const term of [spec.query,spec.fallback]){
+  try{
+   const img=await arSearchCommons(term);
+   if(img)return img;
+  }catch(e){console.warn('Photo search unavailable:',term,e.message);break}
+ }
+ return arPhotoFallback(id,spec);
+}
+function arApplyPhoto(id,data){
+ const cover=host()?.querySelector('.ar-cover[data-photo-id="'+CSS.escape(id)+'"]');
+ if(!cover)return;
+ if(!data?.url)return;
+ cover.classList.remove('ar-photo-loading');
+ cover.innerHTML='';
+ const img=document.createElement('img');
+ img.src=data.url;img.alt='Photo matching '+(arPhotoQueries[id]?.query||'article topic');
+ img.loading='lazy';img.decoding='async';img.referrerPolicy='no-referrer';
+ img.onerror=()=>{
+  if(data.fallback)return;
+  const fallback=arPhotoFallback(id,arPhotoQueries[id]||{query:'science',fallback:'research'});
+  img.onerror=null;img.src=fallback.url;
+  arApplyPhotoCredit(id,fallback);
+ };
+ cover.appendChild(img);
+ arApplyPhotoCredit(id,data);
+}
+function arApplyPhotoCredit(id,data){
+ const credit=host()?.querySelector('[data-photo-credit="'+CSS.escape(id)+'"]');
+ if(!credit||!data)return;
+ credit.href=data.source;
+ credit.textContent=(data.artist?(data.artist.slice(0,36)+' · '):'')+data.license+' ↗';
+ credit.title='Original image, photographer and license';
+ credit.hidden=false;
+}
+function arQueuePhoto(id){
+ if(arPhotoCache[id]?.url){arApplyPhoto(id,arPhotoCache[id]);return}
+ if(arPhotoQueue.includes(id))return;
+ arPhotoQueue.push(id);arPumpPhotos();
+}
+function arPumpPhotos(){
+ while(arPhotoActive<3&&arPhotoQueue.length){
+  const id=arPhotoQueue.shift();
+  if(!host()?.querySelector('[data-photo-id="'+CSS.escape(id)+'"]'))continue;
+  arPhotoActive++;
+  arResolvePhoto(id).then(photo=>{
+   if(!photo)return;
+   arPhotoCache[id]=photo;arPersistPhotoCache();
+   arApplyPhoto(id,photo);
+  }).catch(e=>console.warn('Image load failed:',id,e)).finally(()=>{arPhotoActive--;arPumpPhotos()});
+ }
+}
+function arWirePhotos(){
+ if(arPhotoObserver){arPhotoObserver.disconnect();arPhotoObserver=null}
+ const covers=qsa('.ar-cover[data-photo-id]');
+ if(!('IntersectionObserver' in window)){
+  covers.forEach(node=>arQueuePhoto(node.dataset.photoId));return;
+ }
+ arPhotoObserver=new IntersectionObserver(entries=>{
+  for(const entry of entries){
+   if(!entry.isIntersecting)continue;
+   arPhotoObserver?.unobserve(entry.target);
+   arQueuePhoto(entry.target.dataset.photoId);
+  }
+ },{rootMargin:'550px 0px',threshold:0.01});
+ covers.forEach(cover=>arPhotoObserver.observe(cover));
 }
 async function applyReviewedMCQ(){
  try{
@@ -59,7 +203,7 @@ async function applyReviewedMCQ(){
 }
 function buildIndex(){
  const magazine=db.filter(a=>a.kind==='magazine'),articles=db.filter(a=>a.kind==='article');
- const cards=arr=>arr.map(a=>{const p=progress[a.id]||{};return '<button class="ar-article" data-open="'+E(a.id)+'">'+articleVisual(a)+'<span class="ar-card-row">'+formatLevel(a.level)+'<small>'+E(a.words||0)+' words · '+E(a.pages||1)+' pages</small></span><strong>'+sanitizeTitle(a.title)+'</strong><span class="ar-article-footer">'+(p.complete?'✓ Completed':p.stage?'Continue step '+p.stage:'Start reading')+' <span aria-hidden="true">→</span></span></button>'}).join('');
+ const cards=arr=>arr.map(a=>{const p=progress[a.id]||{};return '<article class="ar-article"><button type="button" class="ar-card-open" data-open="'+E(a.id)+'">'+articleVisual(a)+'<span class="ar-card-row">'+formatLevel(a.level)+'<small>'+E(a.words||0)+' words · '+E(a.pages||1)+' pages</small></span><strong>'+sanitizeTitle(a.title)+'</strong><span class="ar-article-footer">'+(p.complete?'✓ Completed':p.stage?'Continue step '+p.stage:'Start reading')+' <span aria-hidden="true">→</span></span></button><a class="ar-photo-credit" data-photo-credit="'+E(a.id)+'" target="_blank" rel="noopener noreferrer" hidden></a></article>'}).join('');
  const filtered=articles.filter(a=>(level==='all'||a.level===level)&&(!query||norm(a.title).includes(norm(query))));
  const mags=magazine.filter(a=>(level==='all'||a.level===level)&&(!query||norm(a.title).includes(norm(query))));
  return '<section class="ar-shell"><div class="ar-header"><div><p class="ar-overline">SPEAKING & VOCAB · READING LIBRARY</p><h1>Articles</h1><p>Read, highlight, learn vocabulary and practise speaking & writing expressions through five stages.</p></div><div class="ar-counter"><b>'+articles.length+'</b><span>Articles</span><b>'+magazine.length+'</b><span>New Scientist issues</span></div></div>'+
@@ -442,6 +586,7 @@ function wire(){
  qs('#ar-level')?.addEventListener('change',e=>{level=e.target.value;ensureHost()});
  qs('#ar-search')?.addEventListener('input',e=>{query=e.target.value;ensureHost();let i=qs('#ar-search');if(i){i.focus();i.setSelectionRange(query.length,query.length)}});
  qsa('[data-open]').forEach(b=>b.addEventListener('click',()=>startArticle(b.dataset.open)));
+ arWirePhotos();
  qs('#ar-import')?.addEventListener('change',async event=>{let file=event.target.files?.[0];if(!file)return;try{const parsed=JSON.parse(await file.text());let list=cleanContent(parsed.articles);if(!list.length)throw Error('No articles array');db=list;try{localStorage.setItem(CACHE,JSON.stringify({articles:list}))}catch{notify('File imported, but local browser storage is full. Publish JSON on GitHub for permanence.')}ensureHost()}catch(e){notify('Not a valid articles-data.json file')}})
 }
 function activate(){
@@ -453,6 +598,6 @@ document.addEventListener('mousemove',e=>{mouse={x:e.clientX,y:e.clientY}}, {pas
 document.addEventListener('click',e=>{const nav=e.target.closest('#primaryNav [data-view="articles"]');if(!nav)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();history.pushState(null,'','#articles');activate()},true);
 document.addEventListener('click',e=>{if(tip&&!e.target.closest('.ar-tooltip')&&!e.target.closest('[data-word]')&&!e.target.closest('[data-colloc]'))closeTip()},true);
 window.addEventListener('popstate',()=>{if(location.hash.startsWith('#articles'))activate()});
-document.addEventListener('DOMContentLoaded',async()=>{await initData();await applyReviewedMCQ();if(location.hash.startsWith('#articles'))setTimeout(activate,400)});
+document.addEventListener('DOMContentLoaded',async()=>{await initData();await Promise.all([applyReviewedMCQ(),arLoadPhotoQueries()]);if(location.hash.startsWith('#articles'))setTimeout(activate,400)});
 window.VividArticles={open:activate,importData:arr=>{db=cleanContent(arr);activate()},getLibrary:()=>db};
 })();
