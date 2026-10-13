@@ -159,3 +159,37 @@
 .ar-photo-credit[hidden]{display:none}
 @media(max-width:760px){.ar-card-open>.ar-cover{height:165px}}
 @media(prefers-reduced-motion:reduce){.ar-cover-shine{animation:none}.ar-cover img{transition:none}}
+
+
+/* Editorial titles, improved card hierarchy and visible reading lengths */
+.ar-card-open>strong{
+ font-size:clamp(18px,1.3vw,21px);
+ line-height:1.34;
+ font-weight:850;
+ letter-spacing:-.02em;
+ min-height:0;
+ display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+ overflow:hidden;
+ color:#291c48;
+}
+.ar-card-open>.ar-card-row{margin-top:2px}
+.ar-reading-size{display:inline-flex;width:max-content;align-items:center;
+ font-size:11px;color:#66469c;background:#f2eaff;border:1px solid #e2d7f2;
+ border-radius:7px;padding:5px 9px;font-weight:750;line-height:1.3}
+.ar-card-open>.ar-article-footer{margin-top:auto;font-size:13px;padding-top:10px}
+.ar-card-open{gap:10px;padding-bottom:18px}
+.ar-photo-credit{font-size:10px;overflow:hidden;text-overflow:ellipsis;max-width:100%;white-space:nowrap}
+.ar-reading .ar-phrase-highlight{
+ background:linear-gradient(transparent 18%,#ffe17a 18%,#ffe17a 94%,transparent 94%);
+ color:inherit;border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone;
+ padding:1px 0;cursor:pointer;
+}
+.ar-reading .ar-phrase-highlight:hover{background:#ffce54}
+.ar-reading::selection,.ar-reading *::selection{background:#bfa0ef;color:#171127}
+.ar-reading{user-select:text;-webkit-user-select:text}
+.ar-reading .ar-paragraph{user-select:text;-webkit-user-select:text}
+@media(max-width:650px){
+ .ar-card-open>strong{font-size:18px;line-height:1.35}
+ .ar-reading-size{font-size:10px}
+ .ar-page-meter{flex-wrap:wrap}
+}
