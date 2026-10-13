@@ -40,7 +40,7 @@
  const activeDay=(s,day)=>day>=START&&(completed(s,day)>0||duration(s,day)>0||logs(s).some(x=>x.day===day));
  const sum=(arr,fn)=>arr.reduce((a,x)=>a+fn(x),0);
  let tab='dashboard',weekCursor=0,focused=null,focusCategory='Reading',focusElapsed=0,focusSince=0,focusTicker=null;
- let reminderPending=false, chartPeriod=30, editingDay=null, periodMode='week', periodAnchor='2026-10-15';
+ let reminderPending=false, chartPeriod=30, editingDay=null, periodMode='week', periodAnchor=(localDate()<START?START:localDate());
  function appendStyleSafe(){
    if(document.getElementById('goalsAdvancedStyles'))return;
  }
@@ -174,7 +174,7 @@
    const end=monthEnd>last?last:monthEnd;
    const range=st.days.filter(d=>d>=start&&d<=end);
    const doneTotal=sum(range,d=>completed(s,d));
-   const minutesTotal=sum(range,d=>duration(s,d)),activeCount=range.filter(d=>activeDay(s,d)).length;
+   const minutesTotal=sum(range,d=>duration(s,d)),manualHours=sum(range,d=>clamp(valDay(s,d).hours,0,24)),activeCount=range.filter(d=>activeDay(s,d)).length;
    const percentage=range.length?Math.round(doneTotal/(range.length*Math.max(1,knownTasks().length))*100):0;
    const options=SKILLS.map(k=>({key:k,m:sum(sessions(s).filter(x=>range.includes(x.day)&&x.category===k),x=>mins(x.minutes))}));
    const max=Math.max(1,...options.map(x=>x.m));
@@ -202,7 +202,7 @@
     '<div class="ga-tiles">'+card('✅','Bajarilgan vazifalar',doneTotal+' / '+(range.length*knownTasks().length),'Barcha checklistlar')+
      card('📈','Bajarilish foizi',percentage+'%','Tanlangan davr')+
      card('⏱','O‘qish sessiyalari',hh(minutesTotal),'Taymer va sessiyalar')+
-     card('🗓','Faol kunlar',activeCount+' / '+range.length,'Tanlangan davr')+'</div></section>'+
+     card('🗓','Faol kunlar',activeCount+' / '+range.length,'Tanlangan davr')+'</div><p class="ga-muted">Qo‘lda kiritilgan o‘qish soatlari: <b>'+manualHours.toFixed(2)+' soat</b> (taymer vaqtiga qo‘shilmaydi, ikki marta hisoblanmasligi uchun).</p></section>'+
     '<section class="ga-panel"><h3>📅 Har bir kunning natijasi</h3><div class="gp-day-history">'+(daysTable||'<p class="ga-muted">Hozircha hisoblangan kunlar yo‘q.</p>')+'</div></section>'+
     '<section class="ga-panel"><h3>📈 Oylik arxiv</h3><div class="gp-history-grid">'+(monthRows||'<p class="ga-muted">15-oktabrdan boshlanadi.</p>')+'</div></section>'+
     '<section class="ga-panel"><h3>📆 Haftalik arxiv</h3><div class="gp-history-grid">'+(weekRows.join('')||'<p class="ga-muted">15-oktabrdan boshlanadi.</p>')+'</div></section>'+
