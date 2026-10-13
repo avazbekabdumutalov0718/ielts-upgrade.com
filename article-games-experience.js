@@ -19,7 +19,7 @@ function blankExample(item){
  let source=String(item.e||'');
  if(!source)return '';
  const at=source.toLowerCase().indexOf(item.w.toLowerCase());
- if(at<0)return source;
+ if(at<0)return '';
  return source.slice(0,at)+'________'+source.slice(at+item.w.length);
 }
 function hint(item){
@@ -249,15 +249,17 @@ function showInput(s){
 function showBuilder(s){
  s.locked=false;
  const word=remaining(s)[0];
- const tokens=word.w.split(/\s+/).filter(Boolean);
+ const phraseParts=word.w.split(/\s+/).filter(Boolean);
+ const byLetters=phraseParts.length===1;
+ const tokens=byLetters?Array.from(word.w):phraseParts;
  const scrambled=shuffle(tokens.map((t,i)=>({t,i})));
  const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">▤ Sentence builder</div><p class="ar-question-help">So‘zlarni to‘g‘ri tartibda joylashtirib, collocation hosil qiling.</p>'+
-  '<div class="ar-question-text">'+escapeHtml(word.u||('Ibora '+tokens.length+' ta so‘zdan tuzilgan. So‘zlarni tartib bilan joylashtiring.'))+'</div><div class="ar-builder-answer" id="ar-builder-answer">So‘zlarni tanlang...</div>'+
+  '<div class="ar-question-text">'+escapeHtml(word.u||(byLetters?'Harflarni to‘g‘ri tartibga keltiring.':('Ibora '+tokens.length+' ta so‘zdan tuzilgan. So‘zlarni tartib bilan joylashtiring.')))+'</div><div class="ar-builder-answer" id="ar-builder-answer">So‘zlarni tanlang...</div>'+
   '<div class="ar-builder-bank">'+scrambled.map(x=>'<button type="button" data-token="'+x.i+'">'+escapeHtml(x.t)+'</button>').join('')+'</div>'+
   '<div class="ar-builder-controls"><button type="button" id="ar-builder-clear">↺ Boshidan</button><button type="button" id="ar-builder-check">Tekshirish</button></div><div class="ar-feedback" id="ar-play-feedback" aria-live="polite"></div><button type="button" class="ar-next-question" id="ar-next-question" hidden>Keyingisi →</button></div>');
  let selected=[];
  function update(){
-  el(box,'#ar-builder-answer').textContent=selected.length?selected.map(i=>tokens[i]).join(' '):'So‘zlarni tanlang...';
+  el(box,'#ar-builder-answer').textContent=selected.length?selected.map(i=>tokens[i]).join(byLetters?'':' '):(byLetters?'Harflarni tanlang...':'So‘zlarni tanlang...');
   all(box,'[data-token]').forEach(b=>b.disabled=selected.includes(Number(b.dataset.token))||s.locked);
  }
  all(box,'[data-token]').forEach(b=>b.onclick=()=>{selected.push(Number(b.dataset.token));update()});
@@ -265,7 +267,7 @@ function showBuilder(s){
  el(box,'#ar-builder-check').onclick=()=>{
   if(s.locked||selected.length!==tokens.length){el(box,'#ar-play-feedback').textContent='Avval barcha so‘zlarni joylashtiring.';return}
   s.locked=true;
-  const ok=selected.map(i=>tokens[i]).join(' ')===tokens.join(' ');
+  const ok=selected.map(i=>tokens[i]).join(byLetters?'':' ')===tokens.join(byLetters?'':' ');
   record(s,word,ok);
   el(box,'#ar-play-feedback').textContent=ok?'✓ To‘g‘ri!':'✗ To‘g‘ri tartib: '+word.w;
   el(box,'#ar-builder-check').disabled=true;el(box,'#ar-builder-clear').disabled=true;
