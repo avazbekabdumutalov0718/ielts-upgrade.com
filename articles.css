@@ -231,3 +231,93 @@
 .ar-games #ar-game-play button:focus-visible{outline:3px solid #7d5bea;outline-offset:2px}
 @media(max-width:950px){.ar-games .ar-game-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.ar-games .ar-game-grid{grid-template-columns:1fr}.ar-games .ar-game-grid .ar-game-card{min-height:155px}.ar-games-heading{align-items:flex-start;flex-direction:column;gap:10px}.ar-games .ar-game-card strong{font-size:19px}}
+
+
+/* 2026-10-13 — Full collocation game experience, aligned with the native O'yinlar screens */
+.ar-games .ar-games-heading[hidden],.ar-games .ar-game-grid[hidden],.ar-games #ar-game-play[hidden]{display:none!important}
+.ar-games.ar-game-open{background:transparent;border:0;box-shadow:none;padding:0;margin:25px 0}
+.ar-games .ar-game-grid{gap:15px}
+.ar-games .ar-game-grid .ar-game-card{min-height:187px;justify-content:flex-start;align-items:flex-start;padding:22px;border-radius:20px}
+.ar-games .ar-game-card-0{background:linear-gradient(125deg,#5034b8,#7354f0)}
+.ar-games .ar-game-card-1{background:linear-gradient(125deg,#0080af,#16a9c9)}
+.ar-games .ar-game-card-2{background:linear-gradient(125deg,#07916c,#24b992)}
+.ar-games .ar-game-card-3{background:linear-gradient(125deg,#e07317,#f29431)}
+.ar-games .ar-game-card-4{background:linear-gradient(125deg,#ad1a4a,#d42f63)}
+.ar-games .ar-game-card-5{background:linear-gradient(125deg,#673bca,#a052d5)}
+.ar-games .ar-game-card-6{background:linear-gradient(125deg,#ae2582,#e74caf)}
+.ar-games #ar-game-play{margin:0;width:100%;scroll-margin-top:130px}
+.ar-games .ar-game-screen{box-sizing:border-box;width:100%;min-height:520px;padding:26px;background:#fff;border:1px solid #f3d2ad;border-radius:23px;box-shadow:0 15px 34px #683a1710;color:#201639}
+.ar-games .ar-play-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:23px}
+.ar-games .ar-play-header h2{font-size:24px!important;color:#17122e!important;line-height:1.25;margin:7px 0 0!important}
+.ar-games .ar-play-eyebrow{color:#563de5;font-size:12px;font-weight:850;letter-spacing:.095em;text-transform:uppercase}
+.ar-games .ar-play-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.ar-games .ar-play-stats{color:#777298;font-size:13px;font-weight:500;margin-right:8px}
+.ar-games .ar-play-actions button{border:1px solid #e8d6c8;color:#454064;background:#fff;border-radius:12px;min-height:39px;padding:8px 13px;font-size:13px;font-weight:750;cursor:pointer}
+.ar-games .ar-play-actions .ar-play-exit{border-color:#ffd0cb;background:#fff7f5;color:#c34537}
+.ar-games .ar-play-progress{height:8px;background:#ebeaf3;border-radius:30px;overflow:hidden;margin:0 0 24px}
+.ar-games .ar-play-progress span{display:block;height:100%;border-radius:30px;background:linear-gradient(90deg,#4d35d4,#a378ec);transition:width .2s ease}
+.ar-games .ar-flash-layout{display:block;text-align:center}
+.ar-games .ar-flash-card{position:relative;overflow:hidden;width:100%;min-height:350px;border:0;border-radius:21px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;padding:42px 26px;background:linear-gradient(118deg,#2d2199 0%,#5534d6 56%,#8061f1 100%);color:#fff;cursor:pointer;isolation:isolate}
+.ar-games .ar-flash-card:before{content:"";position:absolute;z-index:-1;right:-115px;top:-175px;width:270px;height:270px;border:1px solid #ffffff2a;border-radius:50%;box-shadow:0 0 0 45px #ffffff0b,0 0 0 90px #ffffff09}
+.ar-games .ar-flash-card.is-flipped{background:linear-gradient(118deg,#0b897d,#299ab0 72%,#4ec2b5)}
+.ar-games .ar-flash-caption{font-size:12px;font-weight:850;letter-spacing:.16em;color:#d5caff}
+.ar-games .ar-flash-card strong{font-weight:900;font-size:clamp(25px,4vw,43px);line-height:1.22;max-width:95%;overflow-wrap:anywhere}
+.ar-games .ar-flash-description{font-size:15px;line-height:1.5;max-width:680px;color:#e9e5ff}
+.ar-games .ar-flash-rotate{position:absolute;bottom:25px;font-size:13px;color:#dcd6ff}
+.ar-games .ar-flash-under{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:19px 0 17px;color:#16143a;font-size:15px}
+.ar-games .ar-speaker{padding:11px 15px;border:0;border-radius:12px;color:#583ade;background:#eee9ff;cursor:pointer;font-weight:750}
+.ar-games .ar-flash-controls{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.ar-games .ar-flash-controls button,.ar-games .ar-result-actions button{padding:13px 17px;border:0;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;min-height:46px}
+.ar-games .ar-control-learn{background:#fff0e2;color:#b25c1b}
+.ar-games .ar-control-flip{background:#f1f0f6;color:#4d5271}
+.ar-games .ar-control-know{background:#533ee4;color:#fff}
+.ar-games .ar-question-card{background:#fdfcff;border:1px solid #e9e2f3;border-radius:18px;padding:25px;margin:6px 0 0}
+.ar-games .ar-question-label{color:#6a4edc;font-weight:850;letter-spacing:.04em;font-size:13px;margin-bottom:8px}
+.ar-games .ar-question-help{font-size:14px;color:#6b6583;line-height:1.55;margin:7px 0 16px}
+.ar-games .ar-question-text{font-weight:780;color:#271a52;background:linear-gradient(120deg,#f5f1ff,#fdfbff);border:1px solid #e9dffc;border-radius:16px;padding:25px;font-size:clamp(17px,2.1vw,24px);line-height:1.55;overflow-wrap:anywhere;margin-bottom:21px}
+.ar-games .ar-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.ar-games .ar-choice-option,.ar-games .ar-modern-pairs button,.ar-games .ar-builder-bank button{border:1px solid #ded5ec;background:#fff;color:#372655;font-size:15px;font-weight:650;padding:17px;text-align:left;border-radius:13px;cursor:pointer;transition:background .15s ease,border-color .15s ease}
+.ar-games .ar-choice-option:hover:not(:disabled),.ar-games .ar-modern-pairs button:hover:not(:disabled),.ar-games .ar-builder-bank button:hover:not(:disabled){background:#f3eeff;border-color:#8765dd}
+.ar-games .ar-choice-option.is-correct,.ar-games .ar-modern-pairs button.is-matched{background:#e6faee;border-color:#65c898;color:#137f54}
+.ar-games .ar-choice-option.is-wrong{background:#fff0f0;border-color:#eb8c8c;color:#ab343b}
+.ar-games .ar-choice-option:disabled,.ar-games .ar-modern-pairs button:disabled{opacity:1;cursor:default}
+.ar-games .ar-feedback{font-size:14px;color:#593cb1;font-weight:800;min-height:25px;margin:19px 0 4px;line-height:1.5}
+.ar-games .ar-next-question,.ar-games .ar-type-form button,.ar-games #ar-builder-check{display:inline-block;border:0;background:#543ddf;color:#fff;border-radius:12px;padding:13px 21px;cursor:pointer;font-size:14px;font-weight:800}
+.ar-games .ar-next-question[hidden]{display:none!important}
+.ar-games .ar-play-clock{text-align:center;padding:10px 20px;margin:-4px 0 14px;border-radius:999px;background:#fff0f4;color:#af2259;font-size:18px;font-weight:900;width:max-content;max-width:100%}
+.ar-games .ar-modern-pairs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.ar-games .ar-modern-pairs>div{display:flex;flex-direction:column;gap:10px}
+.ar-games .ar-modern-pairs button{min-height:67px}
+.ar-games .ar-modern-pairs button.is-selected{background:#efe8ff;border-color:#6e4ce5;box-shadow:0 0 0 2px #e2d8ff}
+.ar-games .ar-pair-labels{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:13px 0 9px;color:#82749b;font-size:12px;font-weight:750;text-transform:uppercase}
+.ar-games .ar-pair-counter{color:#5943aa;font-size:14px;font-weight:850}
+.ar-games .ar-type-form{display:flex;gap:9px;flex-wrap:wrap}
+.ar-games .ar-type-form input{flex:1;min-width:190px;padding:15px;border:1px solid #c9bde6;border-radius:11px;background:#fff;color:#241b45;font-size:17px}
+.ar-games .ar-builder-answer{border:2px dashed #bbaaee;background:#f8f5ff;border-radius:14px;padding:20px;min-height:74px;font-size:19px;font-weight:800;line-height:1.5;color:#5436a6;margin:13px 0 17px}
+.ar-games .ar-builder-bank{display:flex;flex-wrap:wrap;gap:9px}
+.ar-games .ar-builder-bank button{background:#f2edff;text-align:center}
+.ar-games .ar-builder-bank button:disabled{opacity:.28}
+.ar-games .ar-builder-controls{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+.ar-games #ar-builder-clear{background:#f2edf6;border:0;border-radius:12px;padding:13px 20px;color:#554d70;font-weight:800;cursor:pointer}
+.ar-games .ar-game-finish{text-align:center;padding:65px 25px}
+.ar-games .ar-result-icon{font-size:65px;margin:20px 0 10px}
+.ar-games .ar-game-finish h2{font-size:29px!important;color:#21133f!important}
+.ar-games .ar-game-finish p{font-size:17px;color:#665779}
+.ar-games .ar-result-score{font-size:50px;font-weight:900;color:#5c42e6;margin:14px 0 22px}
+.ar-games .ar-result-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.ar-games .ar-result-actions button:first-child{background:#5940e9;color:#fff}
+.ar-games .ar-result-actions button:last-child{background:#f0ecf9;color:#513b8e}
+.ar-games .ar-game-screen button:focus-visible,.ar-games .ar-game-card:focus-visible{outline:3px solid #9883ff;outline-offset:3px}
+@media(max-width:760px){
+ .ar-games .ar-game-screen{padding:16px;min-height:440px;border-radius:18px}
+ .ar-games .ar-play-header{flex-direction:column;gap:13px}
+ .ar-games .ar-play-actions{width:100%;justify-content:flex-start}
+ .ar-games .ar-play-stats{width:100%}
+ .ar-games .ar-flash-card{min-height:290px;padding:36px 16px}
+ .ar-games .ar-choice-grid{grid-template-columns:1fr}
+ .ar-games .ar-modern-pairs{gap:9px}
+ .ar-games .ar-modern-pairs button{padding:10px;font-size:13px}
+ .ar-games .ar-question-card{padding:16px}
+ .ar-games .ar-play-eyebrow{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){.ar-games .ar-game-card,.ar-games .ar-play-progress span{transition:none}}
