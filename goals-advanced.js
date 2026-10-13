@@ -39,7 +39,7 @@
  const completed=(s,day)=>knownTasks().filter(t=>isDone(s,day,t)).length;
  const activeDay=(s,day)=>completed(s,day)>0||duration(s,day)>0||logs(s).some(x=>x.day===day);
  const sum=(arr,fn)=>arr.reduce((a,x)=>a+fn(x),0);
- let tab='dashboard',weekCursor=0,focused=null,focusElapsed=0,focusSince=0,focusTicker=null;
+ let tab='dashboard',weekCursor=0,focused=null,focusCategory='Reading',focusElapsed=0,focusSince=0,focusTicker=null;
  let reminderPending=false, chartPeriod=30, editingDay=null;
  function appendStyleSafe(){
    if(document.getElementById('goalsAdvancedStyles'))return;
@@ -250,7 +250,7 @@
     '<section class="ga-screen" '+(tab!=='ielts'?'hidden':'')+'>'+exams(s)+'</section>'+
     '<section class="ga-screen" '+(tab!=='settings'?'hidden':'')+'>'+settings(s)+'</section>';
    root.querySelector('.goals-summary')?.after(area);
-   if(tab==='focus'&&focused){const cat=document.getElementById('gaFocusCat');if(cat)cat.value=focused.category;}
+   if(tab==='focus'){const cat=document.getElementById('gaFocusCat');if(cat)cat.value=focused?.category||focusCategory;}
    ingestPending();
  }
  function saveSession(cat,seconds,rating,source){
@@ -289,13 +289,13 @@
    if((el=e.target.closest('[data-ga-activity-remove]'))){update(ex=>{initialize(ex);ex.activities=ex.activities.filter(x=>x.id!==el.dataset.gaActivityRemove)});return;}
    if((el=e.target.closest('[data-ga-mock-remove]'))){update(ex=>{initialize(ex);ex.mocks=ex.mocks.filter(x=>x.id!==el.dataset.gaMockRemove)});return;}
    if(e.target.id==='gaFocusStart'){
-     if(!focused){focused={category:document.getElementById('gaFocusCat')?.value||'Reading'};focusSince=Date.now();}
+     if(!focused){focusCategory=document.getElementById('gaFocusCat')?.value||focusCategory;focused={category:focusCategory};focusSince=Date.now();}
      syncClock();return;
    }
    if(e.target.id==='gaFocusPause'){focusPause();return;}
    if(e.target.id==='gaFocusReset'){resetFocus();return;}
    if(e.target.id==='gaFocusSave'){
-     const cat=focused?.category||document.getElementById('gaFocusCat')?.value||'Reading';
+     const cat=focused?.category||document.getElementById('gaFocusCat')?.value||focusCategory;
      const total=focusElapsed+(focused?Math.floor((Date.now()-focusSince)/1000):0);
      if(saveSession(cat,total,Math.round(clamp(document.getElementById('gaFocusRating')?.value,1,10)),'focus'))resetFocus();return;
    }
@@ -309,6 +309,7 @@
  function onChange(e){
    if(!authorized()||!api()?.isOpen()||!e.target.closest('#vividGoalsPage'))return;
    const el=e.target,day=selected();
+   if(el.id==='gaFocusCat'){focusCategory=el.value;return;}
    if(el.hasAttribute('data-ga-goal-name')){
      update(x=>{initialize(x);x.names[el.dataset.gaGoalName]=String(el.value||'').trim().slice(0,90)});return;
    }
