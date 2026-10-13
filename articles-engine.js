@@ -263,6 +263,7 @@ function cleanOCRDisplay(value){
   });
 }
 
+let arLastPhraseSavedAt=0;
 function arPhraseRecords(){
  const r=rec();
  if(!Array.isArray(r.phrases))r.phrases=[];
@@ -351,7 +352,7 @@ function arSaveSelection(area){
   }
   old.push(item);
  }
- sel.removeAllRanges();persist();
+ arLastPhraseSavedAt=Date.now();sel.removeAllRanges();persist();
  for(const item of items)arRefreshParagraph(item.pi);
  notify(items.map(x=>x.text.split(/\s+/).length).reduce((a,b)=>a+b,0)+' words highlighted');
 }
@@ -681,7 +682,7 @@ function wireArticle(){
  if(stage===2||stage===4||stage===5){
   qs('#ar-original')?.addEventListener('click',event=>{
    const mark=event.target.closest('.ar-phrase-highlight');
-   if(mark&&!window.getSelection()?.toString())arRemovePhrase(mark.dataset.phraseId);
+   if(mark&&Date.now()-arLastPhraseSavedAt>450&&!window.getSelection()?.toString())arRemovePhrase(mark.dataset.phraseId);
   });
  }
  if(stage===2||stage===3)qsa('[data-word]').forEach(b=>b.addEventListener('click',()=>clickWord(b,b.dataset.word,false)));
