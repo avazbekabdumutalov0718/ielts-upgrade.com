@@ -214,45 +214,76 @@
     '<section class="ga-panel"><h3>🔎 Weak Skill Detector</h3><p class="ga-muted">Tanlangan davrdagi checklist va o‘qish vaqtiga asoslangan — IELTS band emas.</p>'+
       '<div class="ga-skill-rows">'+ranked.map((x,i)=>'<div><b>'+esc(x.skill)+'</b><span>'+x.n+'/'+x.total+' tasks · '+hh(x.m)+'</span>'+(i===0&&range.length?'<em>Ko‘proq mashq kerak</em>':'')+'</div>').join('')+'</div></section>';
  }
+ function taskChecklist(s,groups){
+   const day=selected(),g=api()?.getGroups()||[];
+   return '<div class="gs-skill-grid">'+groups.map(name=>{
+     const group=g.find(x=>x.label===name);
+     if(!group)return '';
+     const count=group.tasks.filter(t=>isDone(s,day,t)).length;
+     return '<section class="gs-skill-card"><header><div><b>'+group.icon+' '+esc(group.label)+'</b><small>'+count+'/'+group.tasks.length+' bajarildi</small></div><span>'+Math.round(100*count/group.tasks.length)+'%</span></header>'+
+      '<div class="gs-skill-progress"><i style="width:'+Math.round(100*count/group.tasks.length)+'%"></i></div>'+
+      '<div class="gs-skill-tasks">'+group.tasks.map(t=>{
+        const enabled=!!t.target,goal=Number(extra(s).targets?.[t.id])||t.target||0,value=Number(valDay(s,day).counts?.[t.id])||0;
+        return '<div class="gs-skill-task"><div class="gs-task-left">'+(enabled?'<span class="gs-count-circle '+(isDone(s,day,t)?'on':'')+'">'+(isDone(s,day,t)?'✓':'')+'</span>':
+          '<input type="checkbox" data-goal-check="'+t.id+'" '+(isDone(s,day,t)?'checked':'')+' aria-label="'+esc(t.name)+'">')+
+          '<span>'+esc(extra(s).names?.[t.id]||t.name)+'</span></div>'+
+          (enabled?'<label class="gs-task-count"><input type="number" data-goal-count="'+t.id+'" min="0" max="99999" value="'+value+'"> / '+goal+'</label>':'')+
+          '<span class="goals-proof-anchor" data-proof-task="'+t.id+'" data-proof-day="'+day+'"></span></div>';
+      }).join('')+'</div></section>';
+   }).join('')+'</div>';
+ }
+ function practiceForm(type){
+   const defs={
+      reading:{title:'Reading Passage',help:'Savollar va to‘g‘ri javoblar sonini yozing.',fields:'score'},
+      article:{title:'Article',help:'Maqola nomini yozing.',fields:'simple'},
+      listening:{title:'Listening',help:'Audio/test mashq natijasini yozing.',fields:'score'},
+      speaking:{title:'Speaking',help:'Gapirgan vaqtni kiriting.',fields:'minutes'},
+      writing:{title:'Writing',help:'Essay word count va estimated band.',fields:'writing'}
+   };
+   const def=defs[type],details=def.fields==='score'?
+    '<label>Correct<input type="number" name="score" min="0" max="40" placeholder="30"></label><label>Total<input type="number" name="total" min="1" max="40" placeholder="40"></label><label>Band (optional)<input name="band" maxlength="10" placeholder="7.0"></label>':
+     def.fields==='minutes'?'<label>Minutes<input name="minutes" type="number" min="1" max="300" placeholder="20"></label>':
+     def.fields==='writing'?'<label>Word count<input name="words" type="number" min="0" max="3000" placeholder="260"></label><label>Estimated band<input name="band" maxlength="10" placeholder="7.0"></label><label>Errors<input name="mistakes" type="number" min="0" max="100" placeholder="3"></label>':'';
+   return '<section class="gs-practice-card"><h3>'+esc(def.title)+' result</h3><p>'+esc(def.help)+'</p><form class="gs-practice-form" id="gaIELTSForm-'+type+'">'+
+    '<label class="gs-full">Topic / title<input name="title" required maxlength="100" placeholder="'+esc(def.title)+' ..."></label>'+
+    details+'<button type="submit">+ Save</button></form></section>';
+ }
  function exams(s){
-   const activities=logs(s).slice().reverse().slice(0,70);
-   const writing=logs(s).filter(x=>x.type==='writing');
-   const reading=logs(s).filter(x=>x.type==='reading'||x.type==='article');
-   const listening=logs(s).filter(x=>x.type==='listening');
-   const speaking=logs(s).filter(x=>x.type==='speaking');
-   const bands=writing.map(x=>Number(x.band)).filter(x=>x>0&&x<=9);
-   const average=bands.length?(sum(bands,x=>x)/bands.length).toFixed(1):'—';
-   const wordCount=sum(writing,x=>Number(x.words)||0);
-   const errorCount=sum(writing,x=>Number(x.mistakes)||0);
-   const inputNum=(name,label,placeholder)=>'<label>'+label+'<input name="'+name+'" type="number" min="0" max="9999" placeholder="'+placeholder+'"></label>';
-   return '<section class="ga-tiles">'+card('📖','Reading & Articles',reading.length,'Finished and logged')+
-     card('🎧','Listening activities',listening.length,'Finished and logged')+
-     card('🗣','Speaking activities',speaking.length,'Practice sessions')+
-     card('✍️','Writing essays',writing.length,'Avg practice band '+average)+'</section>'+
-    '<section class="ga-panel"><h3>📚 Reading, Listening, Speaking & Writing Practice Tracker</h3>'+
-    '<p class="ga-muted">Saytdagi mos mashqlar tugaganda avtomatik yoziladi; boshqa mashqlarni qo‘lda kiriting. Avtomatik kelgan natijalar va qo‘lda kiritilgan yozuvlar alohida belgilanadi.</p>'+
-    '<form id="gaPracticeForm" class="ga-form">'+
-     '<label>Activity<select name="type"><option value="reading">Reading passage</option><option value="article">Article</option><option value="listening">Listening</option><option value="speaking">Speaking practice</option><option value="writing">Writing essay</option></select></label>'+
-     inputField('Title / topic','title','text','Passage or essay topic','', 'maxlength="100" required')+
-     inputNum('score','Correct / score','0')+
-     inputNum('total','Total questions','40')+
-     inputField('Estimated band','band','text','7.0','', 'maxlength="20"')+
-     inputNum('minutes','Speaking minutes','20')+
-     inputNum('words','Essay word count','250')+
-     inputNum('mistakes','Writing errors noticed','3')+
-     '<button type="submit">Save practice</button></form>'+
-    '<p class="ga-muted">Word count va xatolar soni qo‘lda kiritiladi. Estimated band rasmiy IELTS natijasi emas.</p>'+
-    '</section>'+
-    '<section class="ga-panel"><h3>✍️ Writing Performance · Essay Progress</h3>'+
-      '<div class="ga-tiles">'+card('✍️','Essays written',writing.length,'Recorded essays')+
-       card('📈','Average band',average,'Estimated practice scores')+
-       card('🔤','Total written words',wordCount,'Counted from available logs')+
-       card('📝','Mistakes recorded',errorCount,'Manual self-analysis')+'</div></section>'+
-    '<section class="ga-panel"><h3>🗂 Practice History</h3><div class="ga-log-list">'+
-      (activities.length?activities.map(a=>'<div><div><b>'+esc(a.title||a.type)+'</b><small>'+esc(a.day)+' · '+esc(a.type)+' · '+esc(a.source||'manual')+
-        (a.words?' · '+Number(a.words)+' words':'')+(a.mistakes?' · '+Number(a.mistakes)+' errors':'')+(a.minutes?' · '+Number(a.minutes)+' min':'')+'</small></div><span>'+
-        esc(a.band||((a.score!==undefined&&a.score!=='')?a.score+'/'+(a.total||'—'):'✓'))+
-        '</span><button data-ga-activity-remove="'+esc(a.id)+'">×</button></div>').join(''):'<p class="ga-muted">Hali practice tarixi yo‘q.</p>')+'</div></section>';
+   const day=selected(),all=logs(s).filter(x=>x.day>=START);
+   const totals=Object.fromEntries(['reading','article','listening','speaking','writing'].map(k=>[k,all.filter(x=>x.type===k).length]));
+   const writing=all.filter(x=>x.type==='writing'),words=sum(writing,x=>Number(x.words)||0);
+   const entries=all.slice(-30).reverse();
+   return '<section class="gs-hero gs-ielts-hero"><span>IELTS · STUDY HUB</span><h2>IELTS Skills & Progress</h2><p>Har bir skill uchun alohida checklist va natija jurnali. Tanlangan sana: '+day+'</p></section>'+
+    '<div class="ga-tiles">'+card('📖','Passages & Articles',totals.reading+totals.article,'Recorded')+
+      card('🎧','Listening',totals.listening,'Recorded')+
+      card('🗣','Speaking',totals.speaking,'Recorded')+
+      card('✍️','Essays',totals.writing,words+' total words')+'</div>'+
+    taskChecklist(s,['Reading','Listening','Speaking','Writing','General English'])+
+    '<section class="ga-panel"><h3>🧪 Add individual IELTS practice results</h3><p class="ga-muted">Bitta ulkan forma o‘rniga har bir skill uchun qisqa alohida formalar. Saytdagi mos mashqlar tugaganda ayrimlari avtomatik saqlanadi.</p>'+
+      '<div class="gs-practice-grid">'+['reading','article','listening','speaking','writing'].map(practiceForm).join('')+'</div></section>'+
+    '<section class="ga-panel"><h3>📚 IELTS Study History</h3><div class="ga-log-list">'+
+      (entries.length?entries.map(a=>'<div class="gs-log-item" data-activity-id="'+esc(a.id)+'"><div><b>'+esc(a.title||a.type)+'</b><small>'+esc(a.day)+' · '+esc(a.type)+' · '+esc(a.source||'manual')+'</small></div>'+
+       '<span>'+esc(a.band||((a.score!==undefined&&a.score!=='')?a.score+'/'+(a.total||'—'):'✓'))+'</span>'+
+       '<button data-ga-activity-remove="'+esc(a.id)+'" aria-label="Delete entry">×</button></div>').join(''):'<p class="ga-muted">15-oktabrdan keyingi natijalar shu yerda chiqadi.</p>')+
+     '</div></section>';
+ }
+ function satPage(s){
+   const day=selected(),sat=valDay(s,day),settings=extra(s);
+   const date=settings.settings?.examDates?.sat||DEFAULT_DATES.sat;
+   const days=dateDiff(date);
+   const note=settings.satNotes?.[day]||'';
+   const history=Object.entries(settings.satNotes||{}).filter(([d,t])=>d>=START&&String(t||'').trim()).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,15);
+   return '<section class="gs-hero gs-sat-hero"><span>SAT · MATH PREPARATION</span><h2>SAT Maths & English Math</h2><p>15-oktabrdan boshlangan alohida reja. Test sanasi: '+esc(date)+'</p><b class="gs-countdown">'+(days===null?'—':days<0?'Test sanasi o‘tgan':days+' kun qoldi')+'</b></section>'+
+    '<section class="ga-panel"><h3>📐 SAT Daily Checklist</h3><p class="ga-muted">PDFdagi aniq maqsadlar: 8–9-sinf matematikasini 1-noyabrgacha o‘rganish, 1-noyabrda darslarni boshlash va ikki kunda 30 ta English Math so‘z o‘rganish.</p>'+
+      taskChecklist(s,['SAT & English Math'])+'</section>'+
+    '<section class="gs-sat-milestones">'+
+      [['sat_math_nov','Finish grade 8–9 Maths','Before 1 November'],['sat_lessons','Start SAT Maths lessons','1 November'],['english_math','Start English Maths lessons','1 November']].map(([k,l,d])=>
+       '<div class="gs-sat-row" data-sat-row="milestone_'+k+'"><label><input type="checkbox" data-goal-milestone="'+k+'" '+(s.milestones?.[k]?'checked':'')+'><span><b>'+l+'</b><small>'+d+'</small></span></label><span class="goals-proof-anchor" data-proof-task="milestone_'+k+'" data-proof-day="'+day+'"></span></div>').join('')+'</section>'+
+    '<section class="ga-panel"><h3>📝 SAT Study Notes</h3><p class="ga-muted">Bugun yechilgan mashqlar, qiyin bo‘lgan mavzu va kitobdagi sahifalar haqida yozing. Qayd tanlangan kunga saqlanadi.</p>'+
+      '<form id="gaSATNotes" class="ga-reflection"><label>SAT Maths · '+day+'<textarea name="notes" rows="5" maxlength="4000" placeholder="Bugun o‘rganilgan mavzular, misollar va xulosalar...">'+esc(note)+'</textarea></label><button type="submit">Save SAT notes</button></form>'+
+      '<div class="gp-proof-for-notes goals-proof-anchor" data-proof-task="sat_notes" data-proof-day="'+day+'"></div></section>'+
+    '<section class="ga-panel"><h3>📆 SAT Notes History</h3><div class="gp-history-grid">'+(history.length?history.map(([d,n])=>
+      '<button type="button" class="gp-history-month" data-gs-day="'+d+'"><b>'+d+'</b><small>'+esc(String(n).slice(0,100))+'</small></button>').join(''):'<p class="ga-muted">Saqlangan SAT qaydlar shu yerda ko‘rinadi.</p>')+'</div></section>';
  }
  function settings(s){
    const e=extra(s),settings=e.settings||{},dates={...DEFAULT_DATES,...(settings.examDates||{})};
@@ -284,6 +315,7 @@
     '<section class="ga-screen" '+(tab!=='focus'?'hidden':'')+'>'+focus(s)+'</section>'+
     '<section class="ga-screen" '+(tab!=='analytics'?'hidden':'')+'>'+analytics(s)+'</section>'+
     '<section class="ga-screen" '+(tab!=='ielts'?'hidden':'')+'>'+exams(s)+'</section>'+
+    '<section class="ga-screen" '+(tab!=='sat'?'hidden':'')+'>'+satPage(s)+'</section>'+
     '<section class="ga-screen" '+(tab!=='settings'?'hidden':'')+'>'+settings(s)+'</section>';
    root.querySelector('.goals-summary')?.after(area);
    if(tab==='focus'){const cat=document.getElementById('gaFocusCat');if(cat)cat.value=focused?.category||focusCategory;}
