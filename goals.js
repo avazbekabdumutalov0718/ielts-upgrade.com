@@ -5,6 +5,7 @@
   // A public client-side menu is not an authorization boundary: user_state must have
   // user_id = auth.uid() RLS policies in Supabase.
   const OWNER = 'fenric18@gmail.com';
+  const START = '2026-10-15';
   const STATE_KEY = 'vivid_goals_tracker_v1';
   const NAV_ID = 'vividGoalsNav';
   const GROUPS = [
@@ -55,7 +56,7 @@
   const totalTasks = TASKS.length;
   const blank = () => ({version:2,days:{},milestones:{},milestonesUpdatedAt:'',extras:{},extrasUpdatedAt:'',updatedAt:''});
   const safe = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const getDay = () => { const d=new Date(); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
+  const getDay = () => { const d=new Date(); const actual=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); return actual < START ? START : actual; };
   const prevDay = day => { const d=new Date(day+'T12:00:00'); d.setDate(d.getDate()-1); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
   const nval = v => Math.min(99999,Math.max(0,Number(v)||0));
   const normalize = raw => {
@@ -221,7 +222,7 @@
       const d=new Date(getDay()+'T12:00:00');d.setDate(d.getDate()-(6-i));
       return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
     });
-    const total7=lastDays.reduce((s,d)=>s+dayCompleted(state,d),0);
+    const total7=lastDays.filter(d=>d>=START).reduce((s,d)=>s+dayCompleted(state,d),0);
     const milestoneCount=MILESTONES.filter(m=>state.milestones[m.id]).length;
     const panels=GROUPS.map(g=>{
       const completeGroup=g.tasks.filter(t=>done(state,selected,t)).length;
@@ -237,27 +238,27 @@
           <div class="goals-task-main">${effectiveTarget?
           `<span class="goals-dot ${checked?'on':''}">${checked?'✓':''}</span>`:
           `<input type="checkbox" data-goal-check="${t.id}" ${checked?'checked':''} aria-label="${safe(effectiveName)}">`}
-          <span class="goals-task-name">${safe(effectiveName)}</span></div>
+          <span class="goals-task-name">${safe(effectiveName)}</span></div><div class="goals-proof-anchor" data-proof-task="${t.id}" data-proof-day="${selected}"></div>
           ${effectiveTarget?`<div class="goals-number"><input type="number" min="0" max="99999" step="1" inputmode="numeric" data-goal-count="${t.id}" value="${count}" aria-label="${safe(effectiveName)}: miqdor"><span>${t.rolling?`${count}+ ${rolling} (oldingi kun) / ${effectiveTarget}`:`/ ${effectiveTarget}`}</span></div>`:''}
         </div>`;
       }).join('')}</div></section>`;
     }).join('');
     host.innerHTML=`<div class="goals-app" id="vividGoalsPage">
       <section class="goals-hero"><div><span class="goals-kicker">2027 NEW LIFE · PERSONAL TRACKER</span>
-        <h1>Goals <span>✦</span></h1><p>IELTS, SAT va Turkish uchun shaxsiy maqsadlaringiz. Har bir kunning natijasi hisobingizda saqlanadi.</p>
+        <h1>Goals <span>✦</span></h1><p>Tracker 15 October 2026 dan boshlanadi. IELTS, SAT va Turkish uchun shaxsiy maqsadlaringiz. Har bir kunning natijasi hisobingizda saqlanadi.</p>
       </div><div class="goals-hero-meter"><strong>${percent(complete,totalTasks)}%</strong><span>Tanlangan kun</span></div></section>
       <div class="goals-summary">
         <article><span>Kunlik vazifalar</span><strong>${complete}<small> / ${totalTasks}</small></strong></article>
-        <article><span>Oxirgi 7 kun</span><strong>${total7}<small> / ${totalTasks*7}</small></strong></article>
+        <article><span>Oxirgi 7 kun</span><strong>${total7}<small> / ${totalTasks*lastDays.filter(d=>d>=START).length}</small></strong></article>
         <article><span>Asosiy bosqichlar</span><strong>${milestoneCount}<small> / ${MILESTONES.length}</small></strong></article>
       </div>
       <section class="goals-milestones"><div class="goals-section-title"><div><span>YOUR BIG GOALS</span><h2>Maqsadlar va muddatlar</h2></div><small>PDFda yil belgilanmagan; sanalar aynan kiritilgan.</small></div>
         <div class="goals-milestone-grid">${MILESTONES.map(m=>`<label class="goals-milestone ${state.milestones[m.id]?'is-done':''}">
           <span class="goals-milestone-icon">${m.icon}</span><span><small>${m.group}</small><b>${safe(m.title)}</b><em>${safe(m.date)}</em></span>
-          <input type="checkbox" data-goal-milestone="${m.id}" ${state.milestones[m.id]?'checked':''} aria-label="${safe(m.title)}"></label>`).join('')}</div>
+          <input type="checkbox" data-goal-milestone="${m.id}" ${state.milestones[m.id]?'checked':''} aria-label="${safe(m.title)}"><span class="goals-proof-anchor" data-proof-task="milestone_${m.id}" data-proof-day="${selected}"></span></label>`).join('')}</div>
       </section>
-      <section class="goals-workspace"><div class="goals-section-title"><div><span>DAILY HABITS</span><h2>Kunlik tracker</h2></div>
-        <label class="goals-date-picker">Sana <input id="goalsSelectedDate" type="date" value="${selected}"></label></div>
+      <section class="goals-workspace"><div class="goals-section-title"><div><span>DAILY HABITS · 15 OCTOBER 2026 →</span><h2>Kunlik tracker</h2></div>
+        <label class="goals-date-picker">Sana <input id="goalsSelectedDate" type="date" min="${START}" value="${selected}"></label></div>
         <div class="goals-progress"><span style="width:${percent(complete,totalTasks)}%"></span></div>
         <p class="goals-progress-label">${complete} / ${totalTasks} vazifa bajarildi</p>
         <div class="goals-panels">${panels}</div>
@@ -287,7 +288,7 @@
       const t=e.target;
       if(t.id==='goalsSelectedDate'){
         const next=String(t.value||'');
-        if(/^\d{4}-\d{2}-\d{2}$/.test(next)){selected=next;render();}
+        if(/^\d{4}-\d{2}-\d{2}$/.test(next)&&next>=START){selected=next;render();}
       } else if(t.hasAttribute('data-goal-check')) mark(selected,t.dataset.goalCheck,t.checked);
       else if(t.hasAttribute('data-goal-milestone')){
         state.milestones[t.dataset.goalMilestone]=t.checked;
@@ -315,6 +316,7 @@
   window.VividGoals = {
     get:()=>visible&&isOwnerSession()?JSON.parse(JSON.stringify(state)):null,
     getDay:()=>selected,
+    startDate:START,
     getTasks:()=>TASKS.map(t=>({...t})),
     getGroups:()=>GROUPS.map(g=>({...g,tasks:g.tasks.map(t=>({...t}))})),
     isOpen:()=>visible&&isOwnerSession(),
@@ -325,7 +327,7 @@
       state.extrasUpdatedAt=new Date().toISOString();changed();render();return true;
     },
     saveDay:(day,fn)=>{
-      if(!visible||!isOwnerSession()||typeof fn!=='function'||!/^\d{4}-\d{2}-\d{2}$/.test(day))return false;
+      if(!visible||!isOwnerSession()||typeof fn!=='function'||!/^\d{4}-\d{2}-\d{2}$/.test(day)||day<START)return false;
       fn(dayState(day),state);changed(day);render();return true;
     },
     refresh:()=>{if(visible)render();}
