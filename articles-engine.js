@@ -246,14 +246,98 @@ function cleanOCRDisplay(value){
    return known.test(joined)?joined:match;
   });
 }
+
+function arPhraseRecords(){
+ const r=rec();
+ if(!Array.isArray(r.phrases))r.phrases=[];
+ // Convert previously saved per-word keys into the new stable text-offset format.
+ if(Array.isArray(r.highlights)&&r.highlights.length&&!r.phrasesMigrated){
+  const groups=new Map();
+  for(const key of r.highlights){
+   const match=/^(\d+):(\d+)$/.exec(String(key));
+   if(!match)continue;
+   const pi=Number(match[1]),wi=Number(match[2]);
+   const raw=cleanOCRDisplay(active?.body?.[pi]||'');
+   const matches=[...raw.matchAll(/[A-Za-z]+(?:[’'-][A-Za-z]+)*/g)];
+   const m=matches[wi];if(!m)continue;
+   const start=m.index,end=start+m[0].length;
+   const id=pi+':'+start+':'+end;
+   if(!groups.has(id))groups.set(id,{id,pi,start,end,text:m[0]});
+  }
+  const existing=new Set(r.phrases.map(x=>x.id));
+  for(const p of groups.values())if(!existing.has(p.id))r.phrases.push(p);
+  r.phrasesMigrated=true;persist();
+ }
+ return r.phrases;
+}
+function arPhraseMarkup(text,pi){
+ const selection=arPhraseRecords().filter(x=>x.pi===pi&&x.start>=0&&x.end<=text.length&&x.end>x.start)
+  .sort((a,b)=>a.start-b.start||a.end-b.end);
+ let out='',at=0;
+ for(const p of selection){
+  if(p.start<at)continue;
+  out+=E(text.slice(at,p.start))+'<mark class="ar-phrase-highlight" data-phrase-id="'+E(p.id)+'" title="Click to remove highlight">'+E(text.slice(p.start,p.end))+'</mark>';
+  at=p.end;
+ }
+ return out+E(text.slice(at));
+}
 function tokenMarkup(par,pi){
  par=cleanOCRDisplay(par);
- const clickable=stage===2||stage===3;
- if(!clickable)return E(par);
- const rx=/[A-Za-z]+(?:[’'-][A-Za-z]+)*/g;let out='',pos=0,m,j=0;
- while((m=rx.exec(par))){out+=E(par.slice(pos,m.index));const tag='button',attrs='type="button" tabindex="0" data-word="'+E(m[0])+'"';
- out+='<'+tag+' '+attrs+' class="ar-word'+(rec().highlights.includes(pi+':'+j)?' ar-highlighted':'')+'" data-hkey="'+pi+':'+j+'">'+E(m[0])+'</'+tag+'>';pos=rx.lastIndex;j++}
+ if(stage===2||stage===4||stage===5)return arPhraseMarkup(par,pi);
+ if(stage!==3)return E(par);
+ const rx=/[A-Za-z]+(?:[’'-][A-Za-z]+)*/g;
+ let out='',pos=0,m,j=0;
+ while((m=rx.exec(par))){
+  out+=E(par.slice(pos,m.index));
+  out+='<button type="button" tabindex="0" data-word="'+E(m[0])+'" class="ar-word" data-hkey="'+pi+':'+j+'">'+E(m[0])+'</button>';
+  pos=rx.lastIndex;j++;
+ }
  return out+E(par.slice(pos));
+}
+function arRemovePhrase(id){
+ const records=arPhraseRecords(),i=records.findIndex(x=>x.id===id);
+ if(i<0)return;
+ const item=records.splice(i,1)[0];persist();arRefreshParagraph(item.pi);notify('Highlight removed');
+}
+function arRefreshParagraph(pi){
+ const node=qs('#ar-original .ar-paragraph[data-par="'+pi+'"]');
+ if(node&&active?.body?.[pi])node.innerHTML=tokenMarkup(String(active.body[pi]),pi);
+}
+function arSaveSelection(area){
+ if(stage!==2)return;
+ const sel=window.getSelection();
+ if(!sel||sel.isCollapsed||!sel.rangeCount)return;
+ const range=sel.getRangeAt(0);
+ if(!area.contains(range.startContainer)||!area.contains(range.endContainer))return;
+ const paragraphs=[...area.querySelectorAll('.ar-paragraph')].filter(p=>range.intersectsNode(p));
+ if(!paragraphs.length)return;
+ const items=[];
+ for(const p of paragraphs){
+  const pi=Number(p.dataset.par);
+  const section=range.cloneRange();
+  if(!p.contains(section.startContainer))section.setStart(p,0);
+  if(!p.contains(section.endContainer))section.setEnd(p,p.childNodes.length);
+  const before=document.createRange();before.selectNodeContents(p);before.setEnd(section.startContainer,section.startOffset);
+  const start=before.toString().length;
+  const phrase=section.toString();
+  const lead=phrase.length-phrase.trimStart().length;
+  const text=phrase.trim();if(!text||text.length>500)continue;
+  const clean=cleanOCRDisplay(active?.body?.[pi]||'');
+  const from=start+lead,to=from+text.length;
+  if(clean.slice(from,to)!==text)continue;
+  items.push({id:pi+':'+from+':'+to,pi,start:from,end:to,text});
+ }
+ if(!items.length)return;
+ const old=arPhraseRecords();
+ for(const item of items){
+  for(let i=old.length-1;i>=0;i--){
+   const h=old[i];if(h.pi===item.pi&&h.start<item.end&&h.end>item.start)old.splice(i,1);
+  }
+  old.push(item);
+ }
+ sel.removeAllRanges();persist();
+ for(const item of items)arRefreshParagraph(item.pi);
+ notify(items.map(x=>x.text.split(/\s+/).length).reduce((a,b)=>a+b,0)+' words highlighted');
 }
 function listChunks(){const all=active?.body||[];const size=active.kind==='magazine'?14:40;const max=Math.max(0,Math.ceil(all.length/size)-1);block=Math.min(block,max);return {start:block*size,end:Math.min(all.length,(block+1)*size),pages:max+1}}
 function readingMarkup(){
@@ -264,7 +348,7 @@ function readingMarkup(){
 }
 function cartMarkup(){let c=rec().cart||[];return '<section class="ar-cart"><h3>🧺 Word basket · '+c.length+'</h3><p>Selected vocabulary from this article</p>'+(c.length?'<div class="ar-carts">'+c.map((x,i)=>'<div class="ar-basket-word"><b>'+E(x.w)+'</b><span>'+E(x.u||'Tekshirilgan tarjima kiritilmagan')+'</span><button data-remove="'+i+'" aria-label="Remove '+E(x.w)+'">×</button></div>').join('')+'</div>':'<p>No selected words yet. Choose words at Stage 3.</p>')+'</section>'}
 function stageText(){
- return ['Just read the article without hints or translation.','Drag over words: the highlighter follows your pointer. Highlighting works only in Step 2.','Click an English word and select Add to Words. Translation is optional.','Read the article again and review your word basket below.','Use the speed reader, write a summary, and finish the quizzes.'][stage-1]
+ return ['Just read the article without hints or translation.','Select any phrase with the mouse (1–10+ words) to highlight it. Click a highlighted phrase to remove it. Your highlights are saved.','Click an English word and select Add to Words. Translation is optional.','Read the article again and review your word basket below.','Use the speed reader, write a summary, and finish the quizzes.'][stage-1]
 }
 function stepper(){return '<div class="ar-steps">'+stageNames.map((n,i)=>'<button class="'+(stage===i+1?'current ':'')+(i+1<=(rec().stage||1)?'unlocked':'')+'" data-stage="'+(i+1)+'"><b>'+(i+1)+'</b><span>'+n+'</span></button>').join('')+'</div>'}
 function gateMarkup(){
@@ -574,9 +658,15 @@ function wireArticle(){
  qs('#ar-next')?.addEventListener('click',()=>setStage(stage+1));
  qsa('[data-page]').forEach(b=>b.onclick=()=>{block+=Number(b.dataset.page);ensureHost()});
  if(stage===2){
-  const area=qs('#ar-original');area?.addEventListener('mousemove',event=>{mouse={x:event.clientX,y:event.clientY};const marker=qs('#ar-marker');if(marker){marker.style.left=(event.clientX+13)+'px';marker.style.top=(event.clientY+13)+'px';marker.hidden=false}if(tip)positionTip(event.target)});
-  area?.addEventListener('mouseleave',()=>{const marker=qs('#ar-marker');if(marker)marker.hidden=true});
-  area?.addEventListener('mouseup',event=>{mouse={x:event.clientX,y:event.clientY};const sel=window.getSelection();if(!sel||sel.isCollapsed)return;let matches=qsa('.ar-word',area).filter(el=>sel.containsNode(el,true));if(!matches.length)return;const list=rec().highlights||[];for(let el of matches){let key=el.dataset.hkey;if(!list.includes(key))list.push(key);el.classList.add('ar-highlighted')}rec().highlights=list;persist();sel.removeAllRanges();notify(matches.length+' words highlighted')});
+  const area=qs('#ar-original');
+  area?.addEventListener('mouseup',()=>arSaveSelection(area));
+  area?.addEventListener('keyup',event=>{if(event.shiftKey||['Shift','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))arSaveSelection(area)});
+ }
+ if(stage===2||stage===4||stage===5){
+  qs('#ar-original')?.addEventListener('click',event=>{
+   const mark=event.target.closest('.ar-phrase-highlight');
+   if(mark&&!window.getSelection()?.toString())arRemovePhrase(mark.dataset.phraseId);
+  });
  }
  if(stage===2||stage===3)qsa('[data-word]').forEach(b=>b.addEventListener('click',()=>clickWord(b,b.dataset.word,false)));
  qs('#ar-export-pdf')?.addEventListener('click',exportEnglishPDF);
