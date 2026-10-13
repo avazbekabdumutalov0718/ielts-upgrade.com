@@ -126,8 +126,8 @@ function showFlash(s){
  s.flipped=false;
  const draw=()=>{
   const side=s.flipped;
-  const content=side?(word.u||'Tarjima hali mavjud emas') : word.w;
-  const secondary=side?(word.e||'Maqoladan olingan ibora'): '🔊 Talaffuz tugmasini bosing';
+  const content=side?(word.u||word.e||'Tarjima hali mavjud emas') : word.w;
+  const secondary=side?(word.u?(word.e||'Maqoladan olingan ibora'):'Maqoladan olingan asl kontekst'): '🔊 Talaffuz tugmasini bosing';
   const box=roundBox(s,
    '<div class="ar-flash-layout">'+
    '<button type="button" id="ar-flash-card" class="ar-flash-card'+(side?' is-flipped':'')+'" aria-label="Kartani aylantirish">'+
@@ -212,6 +212,7 @@ function showPairs(s){
  });
 }
 function showInput(s){
+ s.locked=false;
  const word=remaining(s)[0];
  const prompt=s.mode===3?(blankExample(word)||hint(word)):(word.u||blankExample(word)||('Birinchi harf: '+word.w.charAt(0)));
  const caption=s.mode===3?'Maqoladagi gapni to‘ldiring':'Collocation’ni ingliz tilida yozing';
@@ -231,6 +232,7 @@ function showInput(s){
  el(box,'#ar-game-input').focus({preventScroll:true});
 }
 function showBuilder(s){
+ s.locked=false;
  const word=remaining(s)[0];
  const tokens=word.w.split(/\s+/).filter(Boolean);
  const scrambled=shuffle(tokens.map((t,i)=>({t,i})));
