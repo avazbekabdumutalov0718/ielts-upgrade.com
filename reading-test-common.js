@@ -151,7 +151,7 @@ function onTestSubmitted() {
         const k='vivid:goals:verified-activity:'+uid;
         let q=[];try{q=JSON.parse(localStorage.getItem(k)||'[]')}catch{}
         if(!Array.isArray(q))q=[];
-        q.push({id:'reading-'+Date.now()+'-'+Math.random().toString(36).slice(2),day:new Date().toLocaleDateString('en-CA'),type:'reading',category:'Reading',title:event.title,score,total:TOTAL,band,source:'automatic'});
+        q.push({id:'reading-'+Date.now()+'-'+Math.random().toString(36).slice(2),day:(()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')})(),type:'reading',category:'Reading',title:event.title,score,total:TOTAL,band,source:'automatic'});
         localStorage.setItem(k,JSON.stringify(q.slice(-200)));
       }
     }
