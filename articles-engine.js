@@ -102,7 +102,7 @@ function arCleanCredit(str){
  return tmp.textContent.replace(/\s+/g,' ').trim().slice(0,100);
 }
 function arImageExists(url){
- return /^https:\/\/upload\.wikimedia\.org\//.test(String(url||''));
+ return /^https:\/\/(?:upload|thumb)\.wikimedia\.org\//.test(String(url||''));
 }
 
 function arPhotoIsUsed(url,id){
@@ -111,7 +111,7 @@ function arPhotoIsUsed(url,id){
 function arSanitizeImageCache(){
  const seen=new Set(),clean={};
  for(const [id,data] of Object.entries(arPhotoCache)){
-  if(!data||!data.url||data.fallback||!/^(https:\/\/upload\.wikimedia\.org\/)/.test(data.url))continue;
+  if(!data||!data.url||data.fallback||!/^https:\/\/(?:upload|thumb)\.wikimedia\.org\//.test(data.url))continue;
   if(seen.has(data.url))continue;
   seen.add(data.url);clean[id]=data;
  }
