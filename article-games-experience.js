@@ -16,11 +16,38 @@ function say(value){
  window.speechSynthesis.speak(u);
 }
 function blankExample(item){
- let source=String(item.e||'');
- if(!source)return '';
- const at=source.toLowerCase().indexOf(item.w.toLowerCase());
- if(at<0)return '';
- return source.slice(0,at)+'________'+source.slice(at+item.w.length);
+ const source=String(item?.gap||item?.e||'').trim();
+ const phrase=String(item?.w||'').trim();
+ if(!source||!phrase)return '';
+ const escaped=phrase.replace(/[.*+?^$(){}|[\]\\]/g,'\\$&');
+ const rx=new RegExp(escaped,'gi');
+ if(!rx.test(source))return source.includes('________')?source:'';
+ return source.replace(rx,'________');
+}
+function buildArticleContexts(entries,paragraphs){
+ const sentences=[];
+ for(const par of Array.isArray(paragraphs)?paragraphs:[]){
+  const text=String(par||'').replace(/\s+/g,' ').trim();
+  for(const sentence of text.split(/(?<=[.!?])\s+/)){
+   const clean=sentence.trim();
+   if(clean.length>=26&&clean.length<=245&&/[a-z].*[a-z]/i.test(clean))sentences.push(clean);
+  }
+ }
+ const used=new Set();
+ for(const word of entries){
+  const phrase=String(word.w||'').toLowerCase();
+  const invalidPhrase=/[,;:!?]/.test(phrase)||!/[a-z]{2}/.test(phrase);
+  const own=String(word.e||'').trim();
+  const candidates=(invalidPhrase?[]:[...sentences,own])
+     .filter(x=>x.length>=26&&x.length<=245&&x.toLowerCase().includes(phrase))
+     .sort((a,b)=>a.length-b.length);
+  let chosen='';
+  for(const example of candidates){
+   const key=example.toLowerCase().replace(/\s+/g,' ').trim();
+   if(!used.has(key)){used.add(key);chosen=example;break;}
+  }
+  word.gap=chosen?chosen:'Harf mashqi: '+word.w.split(/\s+/).map(p=>p[0]+'________').join('  ');
+ }
 }
 function hint(item){
  return item.u||blankExample(item)||('Inglizcha ibora: '+item.w.charAt(0)+'…');
@@ -54,6 +81,7 @@ function launch(options){
  if(!entries.length){const slot=el(section,'#ar-game-play');if(slot){slot.hidden=false;slot.textContent='Bu maqolada hozircha collocation mavjud emas.';}return;}
  const mode=Number(options.mode);
  if(!Number.isInteger(mode)||mode<0||mode>6)return;
+ buildArticleContexts(entries,options.paragraphs);
  const old=options.getState?.()||{};
  const validIds=entries.map(x=>x.id);
  const done=new Set(Array.isArray(old.done)?old.done.filter(x=>validIds.includes(x)):[]);
@@ -160,7 +188,8 @@ function showChoice(s){
  const word=remaining(s)[0];
  const isRush=s.mode===4;
  const translations=s.entries.filter(x=>x.u);
- const canMeanings=!isRush&&!!word.u&&translations.length>=4;
+ const distractorTranslations=new Set(translations.filter(x=>x.id!==word.id).map(x=>normalize(x.u)).filter(x=>x!==normalize(word.u)));
+ const canMeanings=!isRush&&!!word.u&&distractorTranslations.size>=3;
  const hasReverseMeaning=isRush&&!!word.u;
  const options=pickOptions(s,word,canMeanings);
  if(options.length!==4){
@@ -229,7 +258,7 @@ function showPairs(s){
 function showInput(s){
  s.locked=false;
  const word=remaining(s)[0];
- const prompt=s.mode===3?(blankExample(word)||('Kontekst mavjud emas. Imlo: '+morphologyClue(word,3))):(word.u?('Ma’nosi: '+word.u+' · Bosh harflar: '+morphologyClue(word,3)):morphologyClue(word,3));
+ const prompt=s.mode===3?(blankExample(word)||('Harf mashqi: '+morphologyClue(word,3))):(word.u?('Ma’nosi: '+word.u+' · Bosh harflar: '+morphologyClue(word,3)):morphologyClue(word,3));
  const caption=s.mode===3?'Maqoladagi gapni to‘ldiring':'Collocation’ni ingliz tilida yozing';
  const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">'+(s.mode===3?'✎ Fill the gap':'⌨ Typing race')+'</div><p class="ar-question-help">'+caption+'</p><div class="ar-question-text">'+escapeHtml(prompt)+'</div><form id="ar-game-form" class="ar-type-form"><input id="ar-game-input" required autocomplete="off" spellcheck="false" placeholder="Inglizcha iborani yozing" aria-label="Javob"><button type="submit">Tekshirish</button></form><div class="ar-feedback" id="ar-play-feedback" aria-live="polite"></div><button type="button" class="ar-next-question" id="ar-next-question" hidden>Keyingisi →</button></div>');
  el(box,'#ar-game-form').onsubmit=ev=>{
