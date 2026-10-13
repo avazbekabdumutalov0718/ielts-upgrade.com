@@ -362,6 +362,7 @@
         );
         window.VocabCloud?.queue?.();
       } catch {}
+      window.dispatchEvent(new CustomEvent('vivid:study-complete',{detail:{type:'listening',title:'Shadowing · '+current.title}}));
     }
     updateDoneButtons();
   }
