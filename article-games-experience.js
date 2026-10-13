@@ -19,6 +19,7 @@ function blankExample(item){
  const source=String(item?.gap||item?.e||'').trim();
  const phrase=String(item?.w||'').trim();
  if(!source||!phrase)return '';
+ if(source.startsWith('Harf mashqi:'))return source;
  const escaped=phrase.replace(/[.*+?^$(){}|[\]\\]/g,'\\$&');
  const rx=new RegExp(escaped,'gi');
  if(!rx.test(source))return source.includes('________')?source:'';
