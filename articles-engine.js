@@ -636,7 +636,7 @@ function wireArticle(){
    tf.forEach((x,i)=>{const v=chosenAnswers['tf'+i];const ok=v!==undefined&&String(x.answer)===v;if(ok)correct++;lines.push((ok?'✓ ':'✗ ')+(i+1)+': '+(x.answer?'True':'False')+' · Evidence: '+E(x.evidence||''))});
    mc.forEach((x,i)=>{const v=chosenAnswers['mc'+i];const ok=v!==undefined&&String(x.answer)===v;if(ok)correct++;lines.push((ok?'✓ ':'✗ ')+(i+6)+': '+E(x.options?.[x.answer]||'')+' · Evidence: '+E(x.evidence||''))});
    const submitted=tf.filter((x,i)=>chosenAnswers['tf'+i]!==undefined).length+mc.filter((x,i)=>chosenAnswers['mc'+i]!==undefined).length;
-   if(total===10&&submitted===10){rec().complete=true;rec().score=correct;persist()}
+   if(total===10&&submitted===10){const firstFinish=!rec().complete;rec().complete=true;rec().score=correct;persist();if(firstFinish)window.dispatchEvent(new CustomEvent('vivid:study-complete',{detail:{type:'article',title:active?.title||'Article',score:correct,total:10}}))}
    else if(submitted<total){qs('#ar-score').textContent='Avval barcha '+total+' ta savolga javob bering. Hozir '+submitted+' tasi belgilangan.';return}
    qs('#ar-score').innerHTML='<h3>'+correct+' / '+total+' correct</h3><details><summary>Review answers and source evidence</summary>'+lines.map(l=>'<p>'+l+'</p>').join('')+'</details>';
   });
