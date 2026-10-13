@@ -97,55 +97,70 @@ function arCleanCredit(str){
 function arImageExists(url){
  return /^https:\/\/upload\.wikimedia\.org\//.test(String(url||''));
 }
-async function arSearchCommons(searchTerm){
- // Anonymous, CORS-enabled API; images remain hosted by Wikimedia Commons.
+
+function arPhotoIsUsed(url,id){
+ return Object.entries(arPhotoCache).some(([other,entry])=>other!==id&&entry?.url===url);
+}
+function arSanitizeImageCache(){
+ const seen=new Set(),clean={};
+ for(const [id,data] of Object.entries(arPhotoCache)){
+  if(!data||!data.url||data.fallback||!/^(https:\/\/upload\.wikimedia\.org\/)/.test(data.url))continue;
+  if(seen.has(data.url))continue;
+  seen.add(data.url);clean[id]=data;
+ }
+ arPhotoCache=clean;arPersistPhotoCache();
+}
+async function arSearchCommons(searchTerm,id){
  const params=new URLSearchParams({
-  action:'query',generator:'search',gsrsearch:searchTerm+' filetype:bitmap',
-  gsrnamespace:'6',gsrlimit:'12',prop:'imageinfo',
-  iiprop:'url|size|mime|extmetadata',iiurlwidth:'850',
+  action:'query',generator:'search',gsrsearch:searchTerm,
+  gsrnamespace:'6',gsrlimit:'35',prop:'imageinfo',
+  iiprop:'url|size|mime|extmetadata',iiurlwidth:'960',
   iiextmetadatafilter:'LicenseShortName|Artist|LicenseUrl',
   format:'json',origin:'*'
  });
- const controller=new AbortController();
- const timeout=setTimeout(()=>controller.abort(),12000);
+ const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),14000);
  try{
   const response=await fetch('https://commons.wikimedia.org/w/api.php?'+params,{signal:controller.signal,mode:'cors',credentials:'omit'});
-  if(!response.ok)throw Error('Commons HTTP '+response.status);
+  if(!response.ok)throw Error('Commons '+response.status);
   const json=await response.json();
   const pages=Object.values(json.query?.pages||{});
   const terms=searchTerm.toLowerCase().split(/\s+/).filter(w=>w.length>3);
   const candidates=pages.map(p=>{
-   const ii=p.imageinfo?.[0];const license=ii?.extmetadata?.LicenseShortName?.value||'';
-   const okLicense=/^(?:CC ?0|CC BY(?:-SA)?|public domain|PD-)/i.test(license);
+   const ii=p.imageinfo?.[0],license=String(ii?.extmetadata?.LicenseShortName?.value||'');
    const url=ii?.thumburl||ii?.url||'';
-   const width=Number(ii?.width||0),height=Number(ii?.height||0);
-   const ratio=height?width/height:0;
+   const width=Number(ii?.width||0),height=Number(ii?.height||0),ratio=height?width/height:0;
    const title=String(p.title||'').toLowerCase();
    const relevance=terms.filter(t=>title.includes(t)).length;
    return {url,license,width,height,ratio,relevance,
     artist:arCleanCredit(ii?.extmetadata?.Artist?.value),
     source:ii?.descriptionurl||'https://commons.wikimedia.org/wiki/'+encodeURIComponent(p.title||'')};
-  }).filter(x=>arImageExists(x.url)&&x.width>=680&&x.height>=390&&x.ratio>=1.22&&x.ratio<=4.5&&/image\//.test('image/')&&/^(?:CC ?0|CC BY(?:-SA)?|public domain|PD-)/i.test(x.license));
+  }).filter(x=>arImageExists(x.url)&&x.width>=680&&x.height>=390&&x.ratio>=1.18&&x.ratio<4
+      &&/^(?:CC ?0|CC BY(?:-SA)?(?: \d(?:\.\d)?)?|public domain|PD-)/i.test(x.license));
   candidates.sort((a,b)=>b.relevance-a.relevance||Math.abs(a.ratio-1.8)-Math.abs(b.ratio-1.8));
-  return candidates[0]||null;
+  return candidates.find(p=>!arPhotoIsUsed(p.url,id))||null;
  }finally{clearTimeout(timeout)}
 }
 function arPhotoFallback(id,spec){
- const type=arTopicImageType(spec.query+' '+spec.fallback);
- return {url:AR_FALLBACK_PHOTOS[type],source:type==='space'
-  ?'https://commons.wikimedia.org/wiki/File:The_Earth_seen_from_Apollo_17.jpg'
-  :'https://unsplash.com/s/photos/'+encodeURIComponent(spec.fallback||type),
-  artist:type==='space'?'NASA':'Unsplash photographers',license:type==='space'?'Public domain':'Unsplash License',fallback:true};
+ // Never repeat an unrelated stock photograph. Show a neutral placeholder if a licensed image cannot be found.
+ return null;
 }
 async function arResolvePhoto(id){
- const spec=arPhotoQueries[id]||{query:'science research',fallback:'science'};
- for(const term of [spec.query,spec.fallback]){
+ const spec=arPhotoQueries[id]||{query:String(db.find(a=>a.id===id)?.title||'research'),fallback:'science'};
+ const queries=[spec.query,spec.fallback,db.find(a=>a.id===id)?.title].filter(Boolean);
+ for(const term of [...new Set(queries)]){
   try{
-   const img=await arSearchCommons(term);
-   if(img)return img;
-  }catch(e){console.warn('Photo search unavailable:',term,e.message);break}
+   const photo=await arSearchCommons(term,id);
+   if(photo&&!arPhotoIsUsed(photo.url,id))return photo;
+  }catch(e){console.warn('Commons image query:',id,e.message);break}
  }
  return arPhotoFallback(id,spec);
+}
+function arSetMissingPhoto(id){
+ const cover=host()?.querySelector('.ar-cover[data-photo-id="'+CSS.escape(id)+'"]');
+ if(!cover)return;
+ cover.classList.remove('ar-photo-loading');
+ cover.classList.add('ar-photo-unavailable');
+ cover.innerHTML='<span class="ar-no-photo-title">'+E(db.find(a=>a.id===id)?.title||'Article')+'</span><span class="ar-no-photo-subtitle">Photograph unavailable · Commons</span>';
 }
 function arApplyPhoto(id,data){
  const cover=host()?.querySelector('.ar-cover[data-photo-id="'+CSS.escape(id)+'"]');
@@ -157,10 +172,9 @@ function arApplyPhoto(id,data){
  img.src=data.url;img.alt='Photo matching '+(arPhotoQueries[id]?.query||'article topic');
  img.loading='lazy';img.decoding='async';img.referrerPolicy='no-referrer';
  img.onerror=()=>{
-  if(data.fallback)return;
-  const fallback=arPhotoFallback(id,arPhotoQueries[id]||{query:'science',fallback:'research'});
-  img.onerror=null;img.src=fallback.url;
-  arApplyPhotoCredit(id,fallback);
+  delete arPhotoCache[id];arPersistPhotoCache();
+  arSetMissingPhoto(id);
+  const credit=host()?.querySelector('[data-photo-credit="'+CSS.escape(id)+'"]');if(credit)credit.hidden=true;
  };
  cover.appendChild(img);
  arApplyPhotoCredit(id,data);
@@ -174,7 +188,8 @@ function arApplyPhotoCredit(id,data){
  credit.hidden=false;
 }
 function arQueuePhoto(id){
- if(arPhotoCache[id]?.url){arApplyPhoto(id,arPhotoCache[id]);return}
+ if(arPhotoCache[id]?.url&&!arPhotoIsUsed(arPhotoCache[id].url,id)){arApplyPhoto(id,arPhotoCache[id]);return}
+ delete arPhotoCache[id];
  if(arPhotoQueue.includes(id))return;
  arPhotoQueue.push(id);arPumpPhotos();
 }
@@ -184,7 +199,8 @@ function arPumpPhotos(){
   if(!host()?.querySelector('[data-photo-id="'+CSS.escape(id)+'"]'))continue;
   arPhotoActive++;
   arResolvePhoto(id).then(photo=>{
-   if(!photo)return;
+   if(!photo){arSetMissingPhoto(id);return}
+   if(arPhotoIsUsed(photo.url,id)){arSetMissingPhoto(id);return}
    arPhotoCache[id]=photo;arPersistPhotoCache();
    arApplyPhoto(id,photo);
   }).catch(e=>console.warn('Image load failed:',id,e)).finally(()=>{arPhotoActive--;arPumpPhotos()});
@@ -709,6 +725,6 @@ document.addEventListener('mousemove',e=>{mouse={x:e.clientX,y:e.clientY}}, {pas
 document.addEventListener('click',e=>{const nav=e.target.closest('#primaryNav [data-view="articles"]');if(!nav)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();history.pushState(null,'','#articles');activate()},true);
 document.addEventListener('click',e=>{if(tip&&!e.target.closest('.ar-tooltip')&&!e.target.closest('[data-word]')&&!e.target.closest('[data-colloc]'))closeTip()},true);
 window.addEventListener('popstate',()=>{if(location.hash.startsWith('#articles'))activate()});
-document.addEventListener('DOMContentLoaded',async()=>{await initData();await Promise.all([applyReviewedMCQ(),arLoadPhotoQueries(),arLoadEditorialTitles()]);if(location.hash.startsWith('#articles'))setTimeout(activate,400)});
+document.addEventListener('DOMContentLoaded',async()=>{await initData();await Promise.all([applyReviewedMCQ(),arLoadPhotoQueries(),arLoadEditorialTitles()]);arSanitizeImageCache();if(location.hash.startsWith('#articles'))setTimeout(activate,400)});
 window.VividArticles={open:activate,importData:arr=>{db=cleanContent(arr);activate()},getLibrary:()=>db};
 })();
