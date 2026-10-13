@@ -46,7 +46,7 @@ function buildArticleContexts(entries,paragraphs){
    const key=example.toLowerCase().replace(/\s+/g,' ').trim();
    if(!used.has(key)){used.add(key);chosen=example;break;}
   }
-  word.gap=chosen?chosen:'Harf mashqi: '+word.w.split(/\s+/).map(p=>p[0]+'________').join('  ');
+  word.gap=chosen?chosen:'Harf mashqi: '+word.w.split(/\s+/).map(p=>p.length<=2?p[0]+'_'+p.length:'('+p.length+') '+p[0]+'_'+p.slice(-1)).join('  ');
  }
 }
 function hint(item){
