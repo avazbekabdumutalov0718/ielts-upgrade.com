@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VERSION='v44-2026-10-12-speaking-source-games';
+  const VERSION='v45-2026-10-13-distinct-game-exercises';
 
   function hash(input){let x=2166136261>>>0;for(const ch of String(input||'')){x^=ch.charCodeAt(0);x=Math.imul(x,16777619)>>>0}return x>>>0}
   const choose=(arr,seed,step=0)=>arr[((seed+(step*2654435761>>>0))>>>0)%arr.length];
@@ -93,10 +93,28 @@
     return text+' _____';
   }
 
-  // Imported Speaking topic games must use the actual sample-answer sentence.
-  // Other vocabulary keeps its separately generated, varied practice contexts.
+  // Preserve the original sample-answer sentence only for Fill the Gap.
+  // Every other game receives a separate deterministic practice context:
+  // no copying the SAME source sentence into seven different game modes.
+  const uniqueExamples=new Map();
+  const usedContexts=new Map();
+  function distinctPractice(w,slot){
+    const phraseKey=String(w?.id??w?.w??'');
+    const key=phraseKey+'|'+slot;
+    if(uniqueExamples.has(key))return uniqueExamples.get(key);
+    const used=usedContexts.get(phraseKey)||new Set();
+    let output='';
+    for(let i=0;i<256;i++){
+      output=sentence(w,slot+i*1009);
+      if(!used.has(output))break;
+    }
+    used.add(output);usedContexts.set(phraseKey,used);
+    uniqueExamples.set(key,output);
+    return output;
+  }
   function sourceOrPractice(w,slot=0){
-    return w?.sampleAnswerSource && String(w.e||'').trim() ? String(w.e) : sentence(w,slot);
+    if(w?.sampleAnswerSource && slot>=300 && slot<400 && String(w.e||'').trim())return String(w.e);
+    return distinctPractice(w,slot);
   }
 
   try{
@@ -106,18 +124,18 @@
 
     gameTypingPrompt=(w)=>{
       const n=hash(String(w.id??w.w)+'|typing')%4;
-      if(n===0)return{label:w.sampleAnswerSource?'Sample answerdagi bo‘shliqni to‘ldiring':'Yangi kontekstdagi bo‘shliqni to‘ldiring',text:mask(sourceOrPractice(w,401),w.w)};
+      if(n===0)return{label:w.sampleAnswerSource?'Yangi mashq gapidagi bo‘shliqni to‘ldiring':'Yangi kontekstdagi bo‘shliqni to‘ldiring',text:mask(sourceOrPractice(w,401),w.w)};
       if(n===1)return{label:'O‘zbekcha ma’noga qarab inglizchasini yozing',text:w.u};
-      if(n===2)return{label:w.sampleAnswerSource?'Sample answerdan iborani yozing':'Boshqa kontekstdagi iborani yozing',text:mask(sourceOrPractice(w,402),w.w)};
+      if(n===2)return{label:w.sampleAnswerSource?'Boshqa mashq gapidan iborani yozing':'Boshqa kontekstdagi iborani yozing',text:mask(sourceOrPractice(w,402),w.w)};
       return{label:'Harf yordami bilan so‘z yoki iborani yozing',text:String(w.u||'')+' · '+String(w.w||'').split(/\s+/).map(x=>x.charAt(0).toUpperCase()+'…').join(' ')};
     };
 
     gameChoicePrompt=(w,mode,index)=>{
       const base=mode==='rush'?520:510;
       const n=hash(String(w.id??w.w)+'|'+mode+'|'+index)%3;
-      if(n===0)return{reverse:false,label:w.sampleAnswerSource?'Sample answerdagi iboraning ma’nosini toping':'Kontekstdagi so‘z yoki iboraning ma’nosini toping',text:sourceOrPractice(w,base+(index%17))};
+      if(n===0)return{reverse:false,label:'Kontekstdagi so‘z yoki iboraning ma’nosini toping',text:sourceOrPractice(w,base+(index%17))};
       if(n===1)return{reverse:true,label:'Qaysi inglizcha so‘z yoki ibora shu ma’noga mos?',text:w.u};
-      return{reverse:false,label:w.sampleAnswerSource?'Sample answerdagi iboraning tarjimasini toping':'Bu yangi misolda ishlatilgan iboraning ma’nosi qaysi?',text:sourceOrPractice(w,base+31+(index%19))};
+      return{reverse:false,label:'Yangi misoldagi iboraning o‘zbekcha ma’nosini toping',text:sourceOrPractice(w,base+31+(index%19))};
     };
 
     const oldCardMarkup=cardMarkup;
