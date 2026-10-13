@@ -31,7 +31,7 @@ async function initData(){
 }
 
 const AR_PHOTO_CACHE_KEY='vivid_articles_wikimedia_images_v1';
-let arPhotoQueries={},arPhotoCache={},arPhotoObserver=null,arPhotoQueue=[],arPhotoActive=0;
+let arPhotoQueries={},arPinnedPhotos={},arPhotoCache={},arPhotoObserver=null,arPhotoQueue=[],arPhotoActive=0;
 try{arPhotoCache=JSON.parse(localStorage.getItem(AR_PHOTO_CACHE_KEY)||'{}')}catch{arPhotoCache={}}
 const AR_FALLBACK_PHOTOS={
  science:'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=78',
@@ -76,6 +76,13 @@ function arReadingMinutes(a){
 function arSizeMeta(a){
  return '<span class="ar-reading-size">'+E(arLengthLabel(a))+' · ~'+arReadingMinutes(a)+' min read</span>';
 }
+async function arLoadPinnedPhotos(){
+ try{
+ const r=await fetch('articles-pinned-images.json?v=20261013-v20');
+ if(!r.ok)return; const j=await r.json();
+ arPinnedPhotos=j.photos||{};
+ }catch(e){console.warn('Curated article photos unavailable',e)}
+}
 function articleVisual(a){
  const spec=arPhotoQueries[a.id]||{query:String(a.title||'').replace(/[^a-zA-Z ]/g,' ').slice(0,72),fallback:'scientific research'};
  return '<span class="ar-cover ar-photo-loading" data-photo-id="'+E(a.id)+'" role="img" aria-label="'+E('Photo: '+spec.query)+'">'+
@@ -110,50 +117,47 @@ function arSanitizeImageCache(){
  }
  arPhotoCache=clean;arPersistPhotoCache();
 }
+
 async function arSearchCommons(searchTerm,id){
  const params=new URLSearchParams({
-  action:'query',generator:'search',gsrsearch:searchTerm,
+  action:'query',generator:'search',gsrsearch:searchTerm+' filetype:bitmap',
   gsrnamespace:'6',gsrlimit:'35',prop:'imageinfo',
-  iiprop:'url|size|mime|extmetadata',iiurlwidth:'960',
-  iiextmetadatafilter:'LicenseShortName|Artist|LicenseUrl',
-  format:'json',origin:'*'
+  iiprop:'url|size|mime|extmetadata',iiurlwidth:'900',
+  iiextmetadatafilter:'LicenseShortName|Artist',format:'json',origin:'*'
  });
- const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),14000);
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),14000);
  try{
   const response=await fetch('https://commons.wikimedia.org/w/api.php?'+params,{signal:controller.signal,mode:'cors',credentials:'omit'});
   if(!response.ok)throw Error('Commons '+response.status);
   const json=await response.json();
-  const pages=Object.values(json.query?.pages||{});
-  const terms=searchTerm.toLowerCase().split(/\s+/).filter(w=>w.length>3);
-  const candidates=pages.map(p=>{
-   const ii=p.imageinfo?.[0],license=String(ii?.extmetadata?.LicenseShortName?.value||'');
+  const terms=searchTerm.toLowerCase().split(/\s+/).filter(w=>w.length>3&&!['science','research','photo','human','medical'].includes(w));
+  const photos=Object.values(json.query?.pages||{}).map(p=>{
+   const ii=p.imageinfo?.[0],lic=String(ii?.extmetadata?.LicenseShortName?.value||'');
    const url=ii?.thumburl||ii?.url||'';
    const width=Number(ii?.width||0),height=Number(ii?.height||0),ratio=height?width/height:0;
    const title=String(p.title||'').toLowerCase();
    const relevance=terms.filter(t=>title.includes(t)).length;
-   return {url,license,width,height,ratio,relevance,
-    artist:arCleanCredit(ii?.extmetadata?.Artist?.value),
+   return {url,license:lic,width,height,ratio,relevance,filename:p.title,
+    mime:ii?.mime||'',artist:arCleanCredit(ii?.extmetadata?.Artist?.value),
     source:ii?.descriptionurl||'https://commons.wikimedia.org/wiki/'+encodeURIComponent(p.title||'')};
-  }).filter(x=>arImageExists(x.url)&&x.width>=680&&x.height>=390&&x.ratio>=1.18&&x.ratio<4
-      &&/^(?:CC ?0|CC BY(?:-SA)?(?: \d(?:\.\d)?)?|public domain|PD-)/i.test(x.license));
-  candidates.sort((a,b)=>b.relevance-a.relevance||Math.abs(a.ratio-1.8)-Math.abs(b.ratio-1.8));
-  return candidates.find(p=>!arPhotoIsUsed(p.url,id))||null;
+  }).filter(x=>arImageExists(x.url)&&x.mime.startsWith('image/')&&
+    x.width>=600&&x.height>=350&&x.ratio>=1.15&&x.ratio<=4&&
+    /^(?:CC ?0|CC BY(?:-SA)?|public domain|PD-)/i.test(x.license)&&
+    x.relevance>0&&!arPhotoIsUsed(x.url,id));
+  photos.sort((a,b)=>b.relevance-a.relevance||Math.abs(a.ratio-1.8)-Math.abs(b.ratio-1.8));
+  return photos[0]||null;
  }finally{clearTimeout(timeout)}
 }
-function arPhotoFallback(id,spec){
- // Never repeat an unrelated stock photograph. Show a neutral placeholder if a licensed image cannot be found.
- return null;
-}
 async function arResolvePhoto(id){
- const spec=arPhotoQueries[id]||{query:String(db.find(a=>a.id===id)?.title||'research'),fallback:'science'};
- const queries=[spec.query,spec.fallback,db.find(a=>a.id===id)?.title].filter(Boolean);
+ const spec=arPhotoQueries[id]||{query:db.find(x=>x.id===id)?.title||'science',fallback:'research'};
+ const queries=[spec.query,spec.fallback]
+   .filter(Boolean).map(q=>q.split(/\s+/).slice(0,4).join(' '));
  for(const term of [...new Set(queries)]){
-  try{
-   const photo=await arSearchCommons(term,id);
-   if(photo&&!arPhotoIsUsed(photo.url,id))return photo;
-  }catch(e){console.warn('Commons image query:',id,e.message);break}
+  try{const img=await arSearchCommons(term,id);if(img)return img}
+  catch(e){console.warn('Commons search:',id,e.message)}
  }
- return arPhotoFallback(id,spec);
+ return null;
 }
 function arSetMissingPhoto(id){
  const cover=host()?.querySelector('.ar-cover[data-photo-id="'+CSS.escape(id)+'"]');
@@ -188,6 +192,7 @@ function arApplyPhotoCredit(id,data){
  credit.hidden=false;
 }
 function arQueuePhoto(id){
+ if(arPinnedPhotos[id]?.url){arApplyPhoto(id,arPinnedPhotos[id]);return}
  if(arPhotoCache[id]?.url&&!arPhotoIsUsed(arPhotoCache[id].url,id)){arApplyPhoto(id,arPhotoCache[id]);return}
  delete arPhotoCache[id];
  if(arPhotoQueue.includes(id))return;
@@ -726,6 +731,6 @@ document.addEventListener('mousemove',e=>{mouse={x:e.clientX,y:e.clientY}}, {pas
 document.addEventListener('click',e=>{const nav=e.target.closest('#primaryNav [data-view="articles"]');if(!nav)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();history.pushState(null,'','#articles');activate()},true);
 document.addEventListener('click',e=>{if(tip&&!e.target.closest('.ar-tooltip')&&!e.target.closest('[data-word]')&&!e.target.closest('[data-colloc]'))closeTip()},true);
 window.addEventListener('popstate',()=>{if(location.hash.startsWith('#articles'))activate()});
-document.addEventListener('DOMContentLoaded',async()=>{await initData();await Promise.all([applyReviewedMCQ(),arLoadPhotoQueries(),arLoadEditorialTitles()]);arSanitizeImageCache();if(location.hash.startsWith('#articles'))setTimeout(activate,400)});
+document.addEventListener('DOMContentLoaded',async()=>{await initData();await Promise.all([applyReviewedMCQ(),arLoadPhotoQueries(),arLoadEditorialTitles(),arLoadPinnedPhotos()]);arSanitizeImageCache();if(location.hash.startsWith('#articles'))setTimeout(activate,400)});
 window.VividArticles={open:activate,importData:arr=>{db=cleanContent(arr);activate()},getLibrary:()=>db};
 })();
