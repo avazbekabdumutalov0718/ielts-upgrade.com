@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VERSION='v45-2026-10-13-distinct-game-exercises';
+  const VERSION='v46-2026-10-13-all-exercises-independent-seeds';
 
   function hash(input){let x=2166136261>>>0;for(const ch of String(input||'')){x^=ch.charCodeAt(0);x=Math.imul(x,16777619)>>>0}return x>>>0}
   const choose=(arr,seed,step=0)=>arr[((seed+(step*2654435761>>>0))>>>0)%arr.length];
@@ -66,25 +66,32 @@
     return'noun';
   }
 
+  // Independently mixed choices prevent correlated 16/32-element template cycles.
+  function scrambledHash(input) {
+    let n=hash(input);n^=n>>>16;n=Math.imul(n,0x7feb352d)>>>0;
+    n^=n>>>15;n=Math.imul(n,0x846ca68b)>>>0;n^=n>>>16;
+    return n>>>0;
+  }
   function sentence(w,slot=0){
     const term=String(w?.w||w?.term||'').trim();
     if(!term)return'';
     const def=String(w?.d||w?.u||w?.uz||'').trim();
-    const seed=hash(String(w?.id??term)+'|'+String(w?.t||w?.kind||'')+'|'+slot);
-    const scene=choose(scenes,seed,slot+3);
-    const reason=choose(reasons,seed,slot+11);
+    const seed=String(w?.id??term)+'|'+String(w?.t||w?.kind||'')+'|'+String(slot);
+    const choosePart=(arr,salt)=>arr[scrambledHash(seed+'|'+salt)%arr.length];
+    const scene=choosePart(scenes,'scene');
+    const reason=choosePart(reasons,'reason');
     const kind=typeOfTerm(term,def);
-    let s='';
+    let out='';
     if(kind==='verb'){
-      s=choose(verbSubjects,seed,slot+5)+' often '+term+' '+choose(verbTails,seed,slot+13)+', '+reason;
+      out=choosePart(verbSubjects,'subject')+' often '+term+' '+choosePart(verbTails,'verb-tail')+' '+scene+', '+reason;
     }else if(kind==='adj'){
-      s=choose(adjSubjects,seed,slot+7)+' seemed '+term+' '+scene+', '+reason;
+      out=choosePart(adjSubjects,'adj-subject')+' seemed '+term+' '+scene+', '+reason;
     }else if(kind==='adverb'){
-      s=choose(advSubjects,seed,slot+9)+' '+term+' '+scene+', '+reason;
+      out=choosePart(advSubjects,'adv-subject')+' '+term+' '+scene+', '+reason;
     }else{
-      s=choose(nounFrames,seed,slot+2)(term)+' '+scene+', '+reason;
+      out=choosePart(nounFrames,'noun-frame')(term)+' '+scene+', '+reason;
     }
-    return s.replace(/\s+/g,' ').replace(/\s+,/g,',').replace(/\.+$/,'')+'.';
+    return out.replace(/\s+/g,' ').replace(/\s+,/g,',').replace(/\.+$/,'')+'.';
   }
 
   function escapeRx(s){return String(s||'').replace(/[.*+?^$(){}|[\]\\]/g,'\\$&')}
