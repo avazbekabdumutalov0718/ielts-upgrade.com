@@ -134,7 +134,7 @@
      '<label>Skill<select name="category">'+options+'</select></label><label class="ga-grow">Task<input name="title" maxlength="100" placeholder="Masalan: Reading passage" required></label><button type="submit">+ Add</button></form>'+
      '<div class="ga-plan-list">'+(items.length?items.map((x,i)=>'<div class="ga-plan-task '+(x.done?'ga-done':'')+'"><input type="checkbox" data-ga-plan-done="'+esc(x.id)+'" '+(x.done?'checked':'')+'><div><b>'+esc(x.start)+' · '+esc(x.title)+'</b><small>'+esc(x.category)+' · '+clamp(x.length,0,360)+' min</small></div><button data-ga-shift="'+esc(x.id)+'" data-direction="-1" aria-label="Move up" '+(!i?'disabled':'')+'>↑</button><button data-ga-shift="'+esc(x.id)+'" data-direction="1" aria-label="Move down" '+(i===items.length-1?'disabled':'')+'>↓</button><button data-ga-plan-remove="'+esc(x.id)+'">×</button></div>').join(''):'<p class="ga-muted">Hali kunlik vazifa rejalashtirilmagan.</p>')+'</div></section>'+
      '<section class="ga-panel"><h3>📝 Editable Goals & Custom Goals</h3><p class="ga-muted">Asosiy Goals checklistidagi sonli maqsadlar va nomlarni sozlashingiz mumkin.</p>'+
-     '<div class="ga-editable-list">'+knownTasks().filter(t=>t.target).map(t=>'<label>'+esc(extra(s).names?.[t.id]||t.name)+'<input type="number" min="1" max="99999" data-ga-goal-target="'+t.id+'" value="'+(Number(extra(s).targets?.[t.id])||t.target)+'"></label>').join('')+'</div>'+
+     '<div class="ga-editable-list">'+knownTasks().filter(t=>t.target).map(t=>'<label><input type="text" maxlength="90" data-ga-goal-name="'+t.id+'" aria-label="Goal label" value="'+esc(extra(s).names?.[t.id]||t.name)+'"><input type="number" min="1" max="99999" data-ga-goal-target="'+t.id+'" aria-label="Daily target" value="'+(Number(extra(s).targets?.[t.id])||t.target)+'"></label>').join('')+'</div>'+
      '<form id="gaCustomGoal" class="ga-form"><label class="ga-grow">Custom daily goal<input name="title" maxlength="80" placeholder="Yangi vazifa" required></label><button type="submit">Add goal</button></form>'+
      '<div class="ga-custom-list">'+todos.map(t=>'<label><input type="checkbox" data-ga-custom-check="'+esc(t.id)+'" '+(extra(s).customCompletion?.[day]?.[t.id]?'checked':'')+'><span>'+esc(t.name)+'</span><button type="button" data-ga-custom-remove="'+esc(t.id)+'">×</button></label>').join('')+'</div></section>';
  }
@@ -149,7 +149,7 @@
    const total=duration(s,day),manual=clamp(valDay(s,day).hours,0,24)*60;
    return '<section class="ga-panel ga-focus"><h3>⏲ Focus Timer · Automatic Study Hours</h3>'+
      '<div class="ga-focus-clock" id="gaFocusClock">'+focusClock()+'</div>'+
-     '<div class="ga-focus-controls"><label>Skill<select id="gaFocusCat">'+options+'</select></label><button id="gaFocusStart">'+(focused?'Running…':'▶ Start')+'</button><button id="gaFocusPause">Ⅱ Pause</button><button id="gaFocusSave">✓ Save Session</button><button id="gaFocusReset" type="button">↻ Reset</button></div>'+
+     '<div class="ga-focus-controls"><label>Skill<select id="gaFocusCat">'+options+'</select></label><label>Rating (1–10)<input id="gaFocusRating" type="number" min="1" max="10" value="8"></label><button id="gaFocusStart">'+(focused?'Running…':'▶ Start')+'</button><button id="gaFocusPause">Ⅱ Pause</button><button id="gaFocusSave">✓ Save Session</button><button id="gaFocusReset" type="button">↻ Reset</button></div>'+
      '<p class="ga-muted">Taymer ishlayotganda vaqt avtomatik o‘lchanadi. “Save Session” bosilganda kunlik hisobotga qo‘shiladi. Brauzer yopilsa, saqlanmagan sessiya yo‘qolishi mumkin.</p>'+
      '<div class="ga-tiles">'+card('⏲','Timer logged',hh(total),'Tanlangan sana')+card('✍️','Manual hours',hh(Math.round(manual)),'Asosiy Goals trackeridan')+
       card('📌','Combined total',hh(Math.round(manual)+total),'Ikki hisob alohida kiritilgan')+'</div>'+
@@ -297,7 +297,7 @@
    if(e.target.id==='gaFocusSave'){
      const cat=focused?.category||document.getElementById('gaFocusCat')?.value||'Reading';
      const total=focusElapsed+(focused?Math.floor((Date.now()-focusSince)/1000):0);
-     if(saveSession(cat,total,8,'focus'))resetFocus();return;
+     if(saveSession(cat,total,Math.round(clamp(document.getElementById('gaFocusRating')?.value,1,10)),'focus'))resetFocus();return;
    }
    if((el=e.target.closest('[data-ga-export]'))){
      const s=current(),choice=el.dataset.gaExport;if(!s)return;
@@ -309,6 +309,9 @@
  function onChange(e){
    if(!authorized()||!api()?.isOpen()||!e.target.closest('#vividGoalsPage'))return;
    const el=e.target,day=selected();
+   if(el.hasAttribute('data-ga-goal-name')){
+     update(x=>{initialize(x);x.names[el.dataset.gaGoalName]=String(el.value||'').trim().slice(0,90)});return;
+   }
    if(el.hasAttribute('data-ga-goal-target')){
      update(x=>{initialize(x);x.targets[el.dataset.gaGoalTarget]=Math.round(clamp(el.value,1,99999))});return;
    }
@@ -372,8 +375,28 @@
    if(!items.length)return;
    reminderPending=true;
    // Clear only after a successful local+cloud queued state update, which is cached by VividGoals.
-   const ok=update(ex=>{initialize(ex);const seen=new Set(ex.activities.map(x=>x.id));for(const item of items)if(!seen.has(item.id))ex.activities.push(item);
-     if(ex.activities.length>2000)ex.activities.splice(0,ex.activities.length-2000)});
+   const ok=update((ex,root)=>{
+     initialize(ex);
+     const seen=new Set(ex.activities.map(x=>x.id));
+     const recorded=new Set((ex.mocks||[]).map(x=>x.autoId).filter(Boolean));
+     for(const item of items){
+       if(seen.has(item.id))continue;
+       seen.add(item.id);ex.activities.push(item);
+       if(['reading','article','writing','speaking'].includes(item.type)){
+         const d=root.days[item.day]??={checks:{},counts:{},hours:'',note:'',updatedAt:''};
+         d.checks??={};
+         const key={reading:'read_passage',article:'read_article',writing:'essay',speaking:'speaking_mock'}[item.type];
+         if(key)d.checks[key]=true;
+         d.updatedAt=new Date().toISOString();
+       }
+       if(item.type==='writing'&&item.band&&!recorded.has(item.id)){
+         ex.mocks.push({id:id(),autoId:item.id,day:item.day,category:'Writing',title:item.title,band:item.band,source:'automatic'});
+         recorded.add(item.id);
+       }
+     }
+     if(ex.activities.length>2000)ex.activities.splice(0,ex.activities.length-2000);
+     if(ex.mocks.length>500)ex.mocks.splice(0,ex.mocks.length-500);
+   });
    if(ok)try{localStorage.removeItem(pendingKey(uid))}catch{}
    reminderPending=false;
  }
