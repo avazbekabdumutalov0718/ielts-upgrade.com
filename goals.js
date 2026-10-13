@@ -53,23 +53,25 @@
   ];
   const TASKS = GROUPS.flatMap(g=>g.tasks);
   const totalTasks = TASKS.length;
-  const blank = () => ({version:1,days:{},milestones:{},milestonesUpdatedAt:'',updatedAt:''});
+  const blank = () => ({version:2,days:{},milestones:{},milestonesUpdatedAt:'',extras:{},extrasUpdatedAt:'',updatedAt:''});
   const safe = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const getDay = () => { const d=new Date(); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
   const prevDay = day => { const d=new Date(day+'T12:00:00'); d.setDate(d.getDate()-1); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
   const nval = v => Math.min(99999,Math.max(0,Number(v)||0));
   const normalize = raw => {
     const x=raw && typeof raw==='object' ? raw : {};
-    return {version:1, days:x.days && typeof x.days==='object' ? x.days:{},
+    return {version:2, days:x.days && typeof x.days==='object' ? x.days:{},
       milestones:x.milestones && typeof x.milestones==='object'?x.milestones:{},
-      milestonesUpdatedAt:x.milestonesUpdatedAt||'',updatedAt:x.updatedAt||''};
+      milestonesUpdatedAt:x.milestonesUpdatedAt||'',extras:x.extras && typeof x.extras==='object' ? x.extras:{},
+      extrasUpdatedAt:x.extrasUpdatedAt||'',updatedAt:x.updatedAt||''};
   };
   const done = (s,day,task) => {
     const d=s.days[day]||{};
-    if(task.target){
+    const required = task.target ? (nval(s.extras?.targets?.[task.id]) || task.target) : 0;
+    if(required){
       let count=nval(d.counts?.[task.id]);
       if(task.rolling) count+=nval(s.days[prevDay(day)]?.counts?.[task.id]);
-      return count>=task.target;
+      return count>=required;
     }
     return !!d.checks?.[task.id];
   };
@@ -128,6 +130,7 @@
       out.milestones=l.milestones;
       out.milestonesUpdatedAt=l.milestonesUpdatedAt;
     }
+    if(l.extrasUpdatedAt>r.extrasUpdatedAt){out.extras=l.extras;out.extrasUpdatedAt=l.extrasUpdatedAt;}
     if(l.updatedAt>r.updatedAt) out.updatedAt=l.updatedAt;
     return out;
   }
@@ -226,14 +229,16 @@
         <h2><span>${g.icon}</span> ${g.label}</h2><small>${completeGroup}/${g.tasks.length}</small>
       </div><div class="goals-tasks">${g.tasks.map(t=>{
         const checked=done(state,selected,t);
+        const effectiveTarget=t.target?(nval(state.extras?.targets?.[t.id])||t.target):0;
+        const effectiveName=String(state.extras?.names?.[t.id]||t.name);
         const count=nval(current.counts?.[t.id]);
         const rolling=t.rolling?nval(state.days[prevDay(selected)]?.counts?.[t.id]):0;
         return `<div class="goals-task ${checked?'is-done':''}">
-          <div class="goals-task-main">${t.target?
+          <div class="goals-task-main">${effectiveTarget?
           `<span class="goals-dot ${checked?'on':''}">${checked?'✓':''}</span>`:
-          `<input type="checkbox" data-goal-check="${t.id}" ${checked?'checked':''} aria-label="${safe(t.name)}">`}
-          <span class="goals-task-name">${safe(t.name)}</span></div>
-          ${t.target?`<div class="goals-number"><input type="number" min="0" max="99999" step="1" inputmode="numeric" data-goal-count="${t.id}" value="${count}" aria-label="${safe(t.name)}: miqdor"><span>${t.rolling?`${count}+ ${rolling} (oldingi kun) / ${t.target}`:`/ ${t.target}`}</span></div>`:''}
+          `<input type="checkbox" data-goal-check="${t.id}" ${checked?'checked':''} aria-label="${safe(effectiveName)}">`}
+          <span class="goals-task-name">${safe(effectiveName)}</span></div>
+          ${effectiveTarget?`<div class="goals-number"><input type="number" min="0" max="99999" step="1" inputmode="numeric" data-goal-count="${t.id}" value="${count}" aria-label="${safe(effectiveName)}: miqdor"><span>${t.rolling?`${count}+ ${rolling} (oldingi kun) / ${effectiveTarget}`:`/ ${effectiveTarget}`}</span></div>`:''}
         </div>`;
       }).join('')}</div></section>`;
     }).join('');
@@ -267,6 +272,7 @@
       </div></section>
       <footer class="goals-footer"><span id="goalsSaveStatus" role="status">${safe(message)}</span><span>🔒 Faqat tasdiqlangan shaxsiy hisob uchun</span></footer>
     </div>`;
+    document.dispatchEvent(new CustomEvent('vivid-goals:rendered',{detail:{day:selected}}));
   }
 
   function init(){
@@ -306,6 +312,24 @@
     window.addEventListener('pagehide',()=>{if(dirty)cache();});
   }
 
+  window.VividGoals = {
+    get:()=>visible&&isOwnerSession()?JSON.parse(JSON.stringify(state)):null,
+    getDay:()=>selected,
+    getTasks:()=>TASKS.map(t=>({...t})),
+    getGroups:()=>GROUPS.map(g=>({...g,tasks:g.tasks.map(t=>({...t}))})),
+    isOpen:()=>visible&&isOwnerSession(),
+    saveExtras:fn=>{
+      if(!visible||!isOwnerSession()||typeof fn!=='function')return false;
+      if(!state.extras||typeof state.extras!=='object')state.extras={};
+      fn(state.extras,state);
+      state.extrasUpdatedAt=new Date().toISOString();changed();render();return true;
+    },
+    saveDay:(day,fn)=>{
+      if(!visible||!isOwnerSession()||typeof fn!=='function'||!/^\d{4}-\d{2}-\d{2}$/.test(day))return false;
+      fn(dayState(day),state);changed(day);render();return true;
+    },
+    refresh:()=>{if(visible)render();}
+  };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
   else init();
 })();
