@@ -98,6 +98,7 @@
   // to avoid the same answer sentence being reused for several expressions.
   const uniqueExamples=new Map();
   const usedContexts=new Map();
+  const globallyUsedPracticeSentences=new Set();
   function distinctPractice(w,slot){
     const phraseKey=String(w?.id??w?.w??'');
     const key=phraseKey+'|'+slot;
@@ -106,9 +107,9 @@
     let output='';
     for(let i=0;i<256;i++){
       output=sentence(w,slot+i*1009);
-      if(!used.has(output))break;
+      if(!used.has(output)&&!globallyUsedPracticeSentences.has(output))break;
     }
-    used.add(output);usedContexts.set(phraseKey,used);
+    used.add(output);globallyUsedPracticeSentences.add(output);usedContexts.set(phraseKey,used);
     uniqueExamples.set(key,output);
     return output;
   }
