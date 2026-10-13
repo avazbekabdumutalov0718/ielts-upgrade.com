@@ -126,8 +126,8 @@ function showFlash(s){
  s.flipped=false;
  const draw=()=>{
   const side=s.flipped;
-  const content=side?(word.u||word.e||'Tarjima hali mavjud emas') : word.w;
-  const secondary=side?(word.u?(word.e||'Maqoladan olingan ibora'):'Maqoladan olingan asl kontekst'): '🔊 Talaffuz tugmasini bosing';
+  const content=side?(word.u||'Bu iboraning tasdiqlangan tarjimasi hali kiritilmagan') : word.w;
+  const secondary=side?'Bu kartada faqat ma’no beriladi; gapli mashqlar boshqa o‘yinlarda alohida bo‘ladi.':'🔊 Talaffuz tugmasini bosing';
   const box=roundBox(s,
    '<div class="ar-flash-layout">'+
    '<button type="button" id="ar-flash-card" class="ar-flash-card'+(side?' is-flipped':'')+'" aria-label="Kartani aylantirish">'+
@@ -144,18 +144,34 @@ function showFlash(s){
  };
  draw();
 }
+
 function pickOptions(s,word,useUzbek){
- const candidates=s.entries.filter(x=>x.id!==word.id&&(!useUzbek||x.u)&&normalize(x.u)!==normalize(word.u));
- return shuffle([word,...shuffle(candidates).slice(0,3)]);
+ const others=s.entries.filter(x=>x.id!==word.id&&(!useUzbek||x.u)&&(!useUzbek||normalize(x.u)!==normalize(word.u)));
+ return shuffle([word,...shuffle(others).slice(0,3)]);
+}
+function morphologyClue(word,mode){
+ const parts=word.w.match(/[A-Za-z]+/g)||[];
+ const size=parts.reduce((n,x)=>n+x.length,0);
+ if(mode===1)return 'Ibora '+parts.length+' ta so‘z va jami '+size+' ta harfdan iborat. So‘zlarining bosh harflari: '+parts.map(x=>x[0].toUpperCase()).join(' – ')+'.';
+ if(mode===4)return 'Tezlik sinovi: '+parts.length+' ta so‘zli ibora, so‘z uzunliklari '+parts.map(x=>x.length).join(' / ')+'. Mos variantni tanlang.';
+ return parts.map(x=>x[0].toUpperCase()+' '+('_'.repeat(Math.max(1,x.length-1)))).join('   ');
 }
 function showChoice(s){
  const word=remaining(s)[0];
- const translated=s.entries.filter(x=>x.u).length>=4&&!!word.u;
- const options=pickOptions(s,word,translated);
- const prompt=translated?word.w:(blankExample(word)||word.u||('Ibora qaysi? '+word.w.slice(0,1)+'…'));
- const label=translated?'To‘g‘ri o‘zbekcha tarjimani tanlang.':'Maqoladagi gapga mos inglizcha iborani tanlang.';
- const choices=options.map((o,i)=>'<button type="button" class="ar-choice-option" data-choice="'+i+'">'+escapeHtml(translated?o.u:o.w)+'</button>').join('');
- const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">'+(s.mode===4?'⚡ Word Rush':'☑ Multiple choice')+'</div><p class="ar-question-help">'+label+'</p><div class="ar-question-text">'+escapeHtml(prompt)+'</div><div class="ar-choice-grid">'+choices+'</div><div class="ar-feedback" id="ar-play-feedback" aria-live="polite"></div><button type="button" class="ar-next-question" id="ar-next-question" hidden>Keyingisi →</button></div>');
+ const isRush=s.mode===4;
+ const translations=s.entries.filter(x=>x.u);
+ const canMeanings=!isRush&&!!word.u&&translations.length>=4;
+ const hasReverseMeaning=isRush&&!!word.u;
+ const options=pickOptions(s,word,canMeanings);
+ if(options.length!==4){
+  roundBox(s,'<div class="ar-question-card"><p class="ar-question-help">Ushbu mashq uchun to‘rtta turli collocation kerak.</p></div>');
+  return;
+ }
+ const prompt=canMeanings?word.w:hasReverseMeaning?word.u:morphologyClue(word,s.mode);
+ const label=canMeanings?'Ibora ma’nosini to‘rtta tarjimadan toping.':hasReverseMeaning?'O‘zbekcha ma’noga mos inglizcha iborani tez tanlang.':'To‘rtta variantdan berilgan imlo belgisiga mos iborani toping.';
+ const answerText=canMeanings?word.u:word.w;
+ const choices=options.map((o,i)=>'<button type="button" class="ar-choice-option" data-choice="'+i+'">'+escapeHtml(canMeanings?o.u:o.w)+'</button>').join('');
+ const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">'+(isRush?'⚡ Word Rush':'☑ Multiple choice')+'</div><p class="ar-question-help">'+label+'</p><div class="ar-question-text">'+escapeHtml(prompt)+'</div><div class="ar-choice-grid">'+choices+'</div><div class="ar-feedback" id="ar-play-feedback" aria-live="polite"></div><button type="button" class="ar-next-question" id="ar-next-question" hidden>Keyingisi →</button></div>');
  s.locked=false;
  all(box,'[data-choice]').forEach(button=>button.onclick=()=>{
   if(s.locked)return;
@@ -168,9 +184,8 @@ function showChoice(s){
    if(options[Number(b.dataset.choice)].id===word.id)b.classList.add('is-correct');
   });
   if(!ok)button.classList.add('is-wrong');
-  el(box,'#ar-play-feedback').textContent=ok?'✓ To‘g‘ri!':'✗ To‘g‘ri javob: '+(translated?word.u:word.w);
-  const next=el(box,'#ar-next-question');
-  next.hidden=false;
+  el(box,'#ar-play-feedback').textContent=ok?'✓ To‘g‘ri!':'✗ To‘g‘ri javob: '+answerText;
+  const next=el(box,'#ar-next-question');next.hidden=false;
   next.textContent=s.done.size>=s.entries.length?'Natijani ko‘rish →':'Keyingisi →';
   next.onclick=()=>show(s);
  });
@@ -180,8 +195,8 @@ function showPairs(s){
  if(!pack.length){finish(s);return;}
  const rights=shuffle(pack);
  const left=pack.map(x=>'<button type="button" data-left="'+x.id+'">'+escapeHtml(x.w)+'</button>').join('');
- const right=rights.map(x=>'<button type="button" data-right="'+x.id+'">'+escapeHtml(x.u||blankExample(x)||('Ibora: '+x.w.charAt(0)+'…'))+'</button>').join('');
- const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">⌘ Matching pairs</div><p class="ar-question-help">Chapdagi collocation’ni o‘ngdagi tarjima yoki maqola konteksti bilan juftlang.</p><div class="ar-pair-labels"><span>English</span><span>Uzbek / Context</span></div><div class="ar-modern-pairs"><div>'+left+'</div><div>'+right+'</div></div><p class="ar-pair-counter" id="ar-pair-counter">0 / '+pack.length+' juftlik</p><div class="ar-feedback" id="ar-play-feedback" aria-live="polite"></div></div>');
+ const right=rights.map(x=>'<button type="button" data-right="'+x.id+'">'+escapeHtml(x.u||('Imlo belgisi: '+morphologyClue(x,1)))+'</button>').join('');
+ const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">⌘ Matching pairs</div><p class="ar-question-help">Chapdagi collocation’ni o‘ngdagi tarjima yoki so‘z tuzilishi haqidagi belgi bilan juftlang.</p><div class="ar-pair-labels"><span>English</span><span>Uzbek / Context</span></div><div class="ar-modern-pairs"><div>'+left+'</div><div>'+right+'</div></div><p class="ar-pair-counter" id="ar-pair-counter">0 / '+pack.length+' juftlik</p><div class="ar-feedback" id="ar-play-feedback" aria-live="polite"></div></div>');
  let selected=null,matched=0;
  all(box,'[data-left]').forEach(b=>b.onclick=()=>{
   if(b.disabled)return;
@@ -214,7 +229,7 @@ function showPairs(s){
 function showInput(s){
  s.locked=false;
  const word=remaining(s)[0];
- const prompt=s.mode===3?(blankExample(word)||hint(word)):(word.u||blankExample(word)||('Birinchi harf: '+word.w.charAt(0)));
+ const prompt=s.mode===3?(blankExample(word)||('Kontekst mavjud emas. Imlo: '+morphologyClue(word,3))):(word.u?('Ma’nosi: '+word.u+' · Bosh harflar: '+morphologyClue(word,3)):morphologyClue(word,3));
  const caption=s.mode===3?'Maqoladagi gapni to‘ldiring':'Collocation’ni ingliz tilida yozing';
  const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">'+(s.mode===3?'✎ Fill the gap':'⌨ Typing race')+'</div><p class="ar-question-help">'+caption+'</p><div class="ar-question-text">'+escapeHtml(prompt)+'</div><form id="ar-game-form" class="ar-type-form"><input id="ar-game-input" required autocomplete="off" spellcheck="false" placeholder="Inglizcha iborani yozing" aria-label="Javob"><button type="submit">Tekshirish</button></form><div class="ar-feedback" id="ar-play-feedback" aria-live="polite"></div><button type="button" class="ar-next-question" id="ar-next-question" hidden>Keyingisi →</button></div>');
  el(box,'#ar-game-form').onsubmit=ev=>{
@@ -237,7 +252,7 @@ function showBuilder(s){
  const tokens=word.w.split(/\s+/).filter(Boolean);
  const scrambled=shuffle(tokens.map((t,i)=>({t,i})));
  const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">▤ Sentence builder</div><p class="ar-question-help">So‘zlarni to‘g‘ri tartibda joylashtirib, collocation hosil qiling.</p>'+
-  '<div class="ar-question-text">'+escapeHtml(word.u||blankExample(word)||'Maqoladagi iborani qayta tuzing')+'</div><div class="ar-builder-answer" id="ar-builder-answer">So‘zlarni tanlang...</div>'+
+  '<div class="ar-question-text">'+escapeHtml(word.u||('Ibora '+tokens.length+' ta so‘zdan tuzilgan. So‘zlarni tartib bilan joylashtiring.'))+'</div><div class="ar-builder-answer" id="ar-builder-answer">So‘zlarni tanlang...</div>'+
   '<div class="ar-builder-bank">'+scrambled.map(x=>'<button type="button" data-token="'+x.i+'">'+escapeHtml(x.t)+'</button>').join('')+'</div>'+
   '<div class="ar-builder-controls"><button type="button" id="ar-builder-clear">↺ Boshidan</button><button type="button" id="ar-builder-check">Tekshirish</button></div><div class="ar-feedback" id="ar-play-feedback" aria-live="polite"></div><button type="button" class="ar-next-question" id="ar-next-question" hidden>Keyingisi →</button></div>');
  let selected=[];
