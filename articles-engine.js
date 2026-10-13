@@ -595,7 +595,7 @@ function openGame(mode){
  const r=rec();
  if(!r.articleGameSessions)r.articleGameSessions={};
  window.VividArticleGames.launch({
-  mode,section:qs('#ar-collocation-games'),entries:gameWords(),
+  mode,section:qs('#ar-collocation-games'),entries:gameWords(),paragraphs:active?.body||[],
   getState:()=>r.articleGameSessions[mode]||{},
   setState:value=>{r.articleGameSessions[mode]=value;persist();}
  });
