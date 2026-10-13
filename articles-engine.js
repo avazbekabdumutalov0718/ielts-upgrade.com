@@ -78,9 +78,9 @@ function arSizeMeta(a){
 }
 async function arLoadPinnedPhotos(){
  try{
- const r=await fetch('articles-pinned-images.json?v=20261013-v20');
+ const r=await fetch('articles-final-images.json?v=20261013-v22-110-fixed',{cache:'force-cache'});
  if(!r.ok)return; const j=await r.json();
- arPinnedPhotos=j.photos||{};
+ arPinnedPhotos=j.images||{};
  }catch(e){console.warn('Curated article photos unavailable',e)}
 }
 function articleVisual(a){
