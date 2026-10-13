@@ -1,0 +1,94 @@
+/* VIVID IELTS Goals g4 — focused daily/weekly/monthly layout + separate IELTS/SAT */
+#vividGoalsPage{--gs-ink:#272044;--gs-purple:#6738a0;--gs-soft:#f6f0fc}
+#vividGoalsPage .goals-task-main input[type=checkbox],
+#vividGoalsPage .goals-milestone input[type=checkbox],
+#vividGoalsPage .gs-skill-task input[type=checkbox],
+#vividGoalsPage .gs-sat-row input[type=checkbox],
+#vividGoalsPage .ga-plan-task input[type=checkbox],
+#vividGoalsPage .ga-custom-list input[type=checkbox]{
+  appearance:auto!important;-webkit-appearance:checkbox!important;
+  background:transparent!important;color-scheme:light!important;accent-color:#783ea5!important;
+  width:18px!important;height:18px!important;min-width:18px!important;
+  margin:0!important;box-shadow:none!important;border-radius:4px!important;cursor:pointer;
+}
+#vividGoalsPage .goals-task{flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 7px;min-height:51px}
+#vividGoalsPage .goals-task-main{flex:1;min-width:160px}
+#vividGoalsPage .goals-proof-anchor{display:flex;align-items:center;gap:5px;flex-wrap:wrap;max-width:100%;font-size:11px}
+#vividGoalsPage .goals-milestone{position:relative;padding-bottom:34px}
+#vividGoalsPage .goals-milestone>.goals-proof-anchor{position:absolute;left:15px;bottom:7px}
+#vividGoalsPage .ga-plan-task>.goals-proof-anchor,#vividGoalsPage .ga-custom-list label>.goals-proof-anchor{flex-basis:100%;margin-left:25px}
+#vividGoalsPage .ga-plan-task,#vividGoalsPage .ga-custom-list label{flex-wrap:wrap}
+#vividGoalsPage .ga-screen[hidden]{display:none!important}
+#vividGoalsPage .gp-add{color:#623b95!important;background:#f7f1fc!important;border:1px solid #e8dcef!important;font-weight:800!important;border-radius:9px!important;padding:6px 8px!important;font-size:10px!important;min-height:29px!important;white-space:nowrap!important;cursor:pointer}
+#vividGoalsPage .gp-add:hover{background:#eee3fa!important}
+#vividGoalsPage .gp-files{display:flex;flex-direction:column;gap:5px;width:100%}
+#vividGoalsPage .gp-file{display:flex;align-items:center;max-width:280px;gap:5px;padding:5px 7px;border-radius:8px;background:#f9f6fc;border:1px solid #ede5f3;min-width:0}
+#vividGoalsPage .gp-file>button{border:0;background:transparent;color:#694e85;cursor:pointer;font-weight:700;font-size:10px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#vividGoalsPage .gp-file>button:first-child{min-width:0;flex:1}
+#vividGoalsPage .gp-file>small{white-space:nowrap;color:#9c84ac;font-size:9px}
+#vividGoalsPage .gp-file>button:last-child{font-size:18px;font-weight:900}
+#vividGoalsPage .gp-status{margin:20px 0 8px;padding:11px 15px;border-radius:12px;background:#f3eaf9;border:1px solid #e5d3f1;color:#66447d;font-size:12px;line-height:1.6}
+#vividGoalsPage .gs-hero{color:white;border-radius:24px;padding:29px 32px;background:linear-gradient(115deg,#311766,#644185 70%,#b57591);position:relative;overflow:hidden}
+#vividGoalsPage .gs-hero>span{display:inline-block;font-size:11px;letter-spacing:.16em;font-weight:800;color:#e9c9fb;margin-bottom:10px}
+#vividGoalsPage .gs-hero h2{font:800 clamp(26px,4vw,39px)/1.2 "Space Grotesk",Inter,sans-serif;letter-spacing:-.05em;color:#fff;margin:0 0 9px}
+#vividGoalsPage .gs-hero p{font-size:13px;color:#ebdff7;max-width:660px;line-height:1.6;margin:0}
+#vividGoalsPage .gs-sat-hero{background:linear-gradient(115deg,#21365d,#4a3c84 75%,#816fb1)}
+#vividGoalsPage .gs-countdown{position:absolute;right:25px;top:40%;color:#fff;font-size:17px}
+#vividGoalsPage .gs-skill-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+#vividGoalsPage .gs-skill-card{border:1px solid #e6dfea;border-radius:20px;background:#fff;padding:19px;min-width:0;box-shadow:0 6px 19px rgba(40,20,65,.05)}
+#vividGoalsPage .gs-skill-card>header{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:12px}
+#vividGoalsPage .gs-skill-card>header>div{display:flex;flex-direction:column;gap:6px}
+#vividGoalsPage .gs-skill-card>header b{font-size:17px;color:#30234a}
+#vividGoalsPage .gs-skill-card>header small{font-size:11px;color:#9786a0}
+#vividGoalsPage .gs-skill-card>header>span{color:#7348aa;font-size:12px;font-weight:900;background:#f3eafa;border-radius:20px;padding:7px 9px}
+#vividGoalsPage .gs-skill-progress{height:7px;border-radius:20px;overflow:hidden;background:#f1eaf5;margin-bottom:10px}
+#vividGoalsPage .gs-skill-progress i{display:block;background:linear-gradient(90deg,#7d4bc2,#ce84aa);height:100%;border-radius:20px}
+#vividGoalsPage .gs-skill-tasks{display:flex;flex-direction:column;gap:3px}
+#vividGoalsPage .gs-skill-task{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:9px 0;border-bottom:1px solid #f4eef6}
+#vividGoalsPage .gs-skill-task:last-child{border:0}
+#vividGoalsPage .gs-task-left{display:flex;align-items:center;gap:10px;min-width:175px;flex:1}
+#vividGoalsPage .gs-task-left>span{font-size:12px;line-height:1.45;font-weight:650;color:#524362}
+#vividGoalsPage .gs-count-circle{width:18px;height:18px;border:2px solid #b99fcb;border-radius:50%;display:grid;place-items:center;font-size:10px;color:#fff;flex-shrink:0}
+#vividGoalsPage .gs-count-circle.on{background:#7642a3;border-color:#7642a3}
+#vividGoalsPage .gs-task-count{display:flex;align-items:center;font-size:11px;gap:7px;color:#82718f}
+#vividGoalsPage .gs-task-count input{width:54px;min-height:33px;border:1px solid #e2d6e9;border-radius:9px;padding:7px;font-size:12px;color:#56336d;font-weight:800;text-align:center;background:#fff}
+#vividGoalsPage .gs-skill-task>.goals-proof-anchor{flex-basis:100%;margin-left:27px}
+#vividGoalsPage .gs-practice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#vividGoalsPage .gs-practice-card{border:1px solid #ede3f2;border-radius:17px;background:#faf8fd;padding:17px;min-width:0}
+#vividGoalsPage .gs-practice-card h3{font-size:15px;color:#412c59;margin:0 0 7px}
+#vividGoalsPage .gs-practice-card p{font-size:11px;color:#96869d;line-height:1.5;margin:0 0 13px}
+#vividGoalsPage .gs-practice-form{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+#vividGoalsPage .gs-practice-form label{min-width:75px;flex:1;display:flex;flex-direction:column;gap:5px;color:#776386;font-size:10px;font-weight:800}
+#vividGoalsPage .gs-practice-form .gs-full{flex-basis:100%}
+#vividGoalsPage .gs-practice-form input{width:100%;min-height:39px;border-radius:10px;background:#fff;border:1px solid #e2d7e8;color:#312346;padding:9px 10px;font-size:12px}
+#vividGoalsPage .gs-practice-form button,#vividGoalsPage .gp-range-buttons button{border:0;border-radius:10px;background:#673a9c;color:white;font-size:12px;font-weight:800;padding:11px 14px;min-height:38px;cursor:pointer}
+#vividGoalsPage .gs-practice-form button{margin-top:7px}
+#vividGoalsPage .gs-log-item{flex-wrap:wrap}
+#vividGoalsPage .gs-log-item>.goals-proof-anchor{flex-basis:100%;margin-left:10px}
+#vividGoalsPage .gs-sat-milestones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#vividGoalsPage .gs-sat-row{background:#fff;border:1px solid #e6ddeb;border-radius:18px;padding:16px;display:flex;flex-wrap:wrap;align-items:center;min-height:98px}
+#vividGoalsPage .gs-sat-row label{display:flex;align-items:center;gap:12px;width:100%}
+#vividGoalsPage .gs-sat-row label span{display:flex;flex-direction:column;gap:6px}
+#vividGoalsPage .gs-sat-row label b{color:#3b2854;font-size:13px}
+#vividGoalsPage .gs-sat-row label small{color:#97869d;font-size:11px}
+#vividGoalsPage .gs-sat-row .goals-proof-anchor{padding-top:8px;padding-left:27px}
+#vividGoalsPage .gp-range-controls{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0 20px}
+#vividGoalsPage .gp-range-buttons{display:flex;gap:8px;flex-wrap:wrap}
+#vividGoalsPage .gp-range-buttons button{background:#f2e9fa;color:#64418c;border:1px solid #e6d8f1}
+#vividGoalsPage .gp-range-buttons button.selected{background:#68409a;color:white}
+#vividGoalsPage .gp-range-controls>label{display:flex;flex-direction:column;gap:6px;color:#766582;font-weight:800;font-size:11px}
+#vividGoalsPage .gp-range-controls input{border:1px solid #e0d5e8;padding:9px 10px;border-radius:9px;color:#453059;background:#fff}
+#vividGoalsPage .gp-day-history{display:flex;flex-direction:column;gap:6px;max-height:440px;overflow:auto}
+#vividGoalsPage .gp-day-row{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:10px;align-items:center;padding:11px 13px;border-radius:10px;background:#faf7fc;font-size:12px;color:#6b587a}
+#vividGoalsPage .gp-day-row>span:first-child{display:flex;gap:6px;align-items:center}
+#vividGoalsPage .gp-day-row b{color:#38284b;font-size:12px}
+#vividGoalsPage .gp-day-row strong{color:#7442a0}
+#vividGoalsPage .gp-day-row small{font-size:10px;color:#97869e}
+#vividGoalsPage .gp-history-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+#vividGoalsPage .gp-history-month{border:1px solid #e8dff0;background:#faf7fe;border-radius:13px;padding:13px;min-height:67px;text-align:left;display:flex;flex-direction:column;gap:7px;cursor:pointer}
+#vividGoalsPage .gp-history-month b{font-size:12px;color:#462c5b}
+#vividGoalsPage .gp-history-month strong{font-size:13px;color:#713e9d}
+#vividGoalsPage .gp-history-month small{font-size:11px;color:#93809f}
+#vividGoalsPage .ga-reflection textarea{width:100%}
+@media(max-width:1100px){#vividGoalsPage .gs-skill-grid,#vividGoalsPage .gs-practice-grid{grid-template-columns:1fr}#vividGoalsPage .gs-sat-milestones{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){#vividGoalsPage .gs-hero{padding:24px}#vividGoalsPage .gs-countdown{position:static;display:block;margin-top:12px}#vividGoalsPage .gp-history-grid,#vividGoalsPage .gs-sat-milestones{grid-template-columns:1fr}#vividGoalsPage .gp-day-row{grid-template-columns:1fr 1fr;gap:6px;padding:9px}#vividGoalsPage .gs-skill-card{padding:14px}#vividGoalsPage .ga-compare-grid{grid-template-columns:1fr 1fr}#vividGoalsPage .gp-file{max-width:240px}}
