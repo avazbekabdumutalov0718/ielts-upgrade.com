@@ -133,3 +133,29 @@
 .ar-cover-category{position:absolute;bottom:9px;left:15px;font-size:11px;font-weight:800;letter-spacing:.08em;color:#fff}
 .ar-article{overflow:hidden}
 .ar-word-actions button[hidden]{display:none!important}
+
+
+/* Real photography covers: unique article-topic Wikimedia Commons results. */
+.ar-article{position:relative;padding:0;min-height:260px;gap:0;overflow:hidden;border:1px solid #e3d9eb;
+ box-shadow:0 6px 22px rgba(43,27,84,.095);border-radius:17px}
+.ar-card-open{display:flex;flex-direction:column;align-items:stretch;width:100%;flex:1;text-align:left;
+ padding:0 18px 15px;gap:12px;background:#fff;border:0;color:inherit;min-width:0}
+.ar-card-open:focus-visible{outline:3px solid #7951cf;outline-offset:-3px}
+.ar-card-open>.ar-cover{margin:0 -18px 3px;border-radius:16px 16px 0 0;height:160px;width:calc(100% + 36px);
+ display:block;position:relative;overflow:hidden;background:#e6e1f0}
+.ar-cover img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;
+ transition:transform .35s ease,filter .35s ease}
+.ar-article:hover .ar-cover img{transform:scale(1.05);filter:saturate(1.09)}
+.ar-cover-shine{position:absolute;inset:0;background:linear-gradient(105deg,#e4e1ed 12%,#f1eff6 37%,#ded8ec 65%);background-size:200% 100%;animation:ar-photo-shimmer 1.35s infinite linear}
+@keyframes ar-photo-shimmer{0%{background-position:150% 0}100%{background-position:-70% 0}}
+.ar-photo-loading-label{position:absolute;bottom:12px;left:14px;font-size:11px;letter-spacing:.02em;
+ color:#625a72;font-weight:700;white-space:nowrap}
+.ar-card-open>strong{font-size:15px;color:#261b43;line-height:1.4;overflow-wrap:anywhere;min-height:40px}
+.ar-card-open>.ar-card-row{margin-top:2px}
+.ar-card-open>.ar-article-footer{margin-top:auto;padding-top:6px}
+.ar-photo-credit{display:block;align-self:flex-end;text-align:right;font-size:10px;line-height:1.35;
+ color:#776687;padding:0 18px 12px;text-decoration:underline;text-underline-offset:2px}
+.ar-photo-credit:hover{color:#532aa0}
+.ar-photo-credit[hidden]{display:none}
+@media(max-width:760px){.ar-card-open>.ar-cover{height:165px}}
+@media(prefers-reduced-motion:reduce){.ar-cover-shine{animation:none}.ar-cover img{transition:none}}
