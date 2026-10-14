@@ -138,11 +138,11 @@
    if(!s)return;
    const anchors=[...root.querySelectorAll('[data-proof-task]')];
    // Planner tasks, custom goals and saved IELTS/SAT practice records also get an attachment slot.
-   root.querySelectorAll('.ga-plan-task[data-plan-id],.ga-custom-list [data-custom-id],.ga-log-list [data-activity-id],.gs-sat-row[data-sat-row]').forEach(el=>{
+   root.querySelectorAll('.ga-plan-task[data-plan-id],.ga-custom-list [data-custom-id],.ga-log-list [data-activity-id],.ga-session-list [data-session-id],.gs-sat-row[data-sat-row]').forEach(el=>{
       if(el.querySelector('[data-proof-task]'))return;
       const wrap=document.createElement('span');
       wrap.className='goals-proof-anchor';
-      const id=el.dataset.planId?'plan_'+el.dataset.planId:el.dataset.customId?'custom_'+el.dataset.customId:el.dataset.activityId?'activity_'+el.dataset.activityId:'sat_'+el.dataset.satRow;
+      const id=el.dataset.planId?'plan_'+el.dataset.planId:el.dataset.customId?'custom_'+el.dataset.customId:el.dataset.activityId?'activity_'+el.dataset.activityId:el.dataset.sessionId?'session_'+el.dataset.sessionId:'sat_'+el.dataset.satRow;
       wrap.dataset.proofTask=id;wrap.dataset.proofDay=day;
       el.appendChild(wrap);anchors.push(wrap);
    });
