@@ -92,14 +92,30 @@ const frame={
 };
 function specificSentence(term,key,actor,area){
  const t=term.toLowerCase();let options=[];
- if(/^(increasingly difficult|widely recognised|widely recognized|highly effective)$/.test(t))options=[
- 'Providing affordable services has become '+term+' as demand continues to rise.',
- 'The importance of careful long-term planning is '+term+' among independent experts.',
- 'The proposed reform was described as '+term+' after a detailed evaluation.',
- 'Meeting the needs of a growing population is becoming '+term+' for local authorities.',
- 'The challenges facing public institutions have become '+term+' in recent years.',
- 'The approach appears '+term+' when supported by reliable evidence.',
- 'Ensuring equal opportunities may become '+term+' without sustained investment.'];
+ if(t==='increasingly difficult')options=[
+ 'Providing affordable housing is becoming '+term+' as demand continues to rise.',
+ 'It has become '+term+' to recruit qualified teachers in remote areas.',
+ 'Maintaining reliable public transport is '+term+' during budget cuts.',
+ 'The council found it '+term+' to meet the needs of growing communities.',
+ 'It is '+term+' for small businesses to compete with larger firms.',
+ 'Finding long-term solutions is '+term+' without reliable funding.',
+ 'Governments may find it '+term+' to balance costs and public expectations.'];
+ else if(t==='widely recognised'||t==='widely recognized')options=[
+ 'The value of preventive healthcare is '+term+' by public-health specialists.',
+ 'The importance of early education is '+term+' across the research community.',
+ 'This approach is '+term+' as an effective method of reducing waste.',
+ 'The connection between clean air and public health is '+term+'.',
+ 'The need for reliable evidence is '+term+' among policymakers.',
+ 'The benefits of safe public transport are '+term+' in major cities.',
+ 'The risks associated with poor planning are now '+term+'.'];
+ else if(t==='highly effective')options=[
+ 'Targeted support for struggling students has proved '+term+'.',
+ 'The public awareness campaign was '+term+' in reaching young adults.',
+ 'Researchers considered the new teaching method '+term+'.',
+ 'The initiative could be '+term+' if schools receive proper resources.',
+ 'The response was '+term+' because it addressed the problem directly.',
+ 'Community-led recycling programmes have been '+term+' in several cities.',
+ 'The proposed solution appears '+term+' when implemented consistently.'];
  else if(/^(make a positive contribution|make a significant contribution|make an important contribution)$/.test(t))options=[
  'Community groups can '+term+' to neighbourhood development.',
  'Universities often '+term+' to the growth of regional economies.',
