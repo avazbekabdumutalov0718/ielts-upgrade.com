@@ -115,3 +115,47 @@
 #vividGoalsPage .gs-sat-hero .ga-clock-unit{background:rgba(255,255,255,.95)}
 @media(max-width:1100px){#vividGoalsPage .ga-clock-unit b{font-size:21px}}
 @media(max-width:640px){#vividGoalsPage .ga-clock-unit b{font-size:22px}#vividGoalsPage .ga-deadline{padding:14px}#vividGoalsPage .ga-clock-unit small{font-size:10px}}
+
+/* g6: explicit, clickable tick buttons — no native checkbox event dependency. */
+#vividGoalsPage .gs-tick-control,
+#vividGoalsPage .gs-milestone-tick {
+  appearance:none!important;-webkit-appearance:none!important;
+  font:inherit!important;color:inherit;
+  border:0!important;background:transparent!important;
+  box-shadow:none!important;text-align:left!important;
+  cursor:pointer!important;touch-action:manipulation;
+}
+#vividGoalsPage .gs-tick-control {display:flex!important;align-items:center!important;gap:10px!important;min-width:0}
+#vividGoalsPage .goals-task-main .gs-tick-control{width:100%;padding:7px 3px!important;border-radius:8px!important}
+#vividGoalsPage .gs-skill-task .gs-tick-control{min-height:40px;padding:7px 3px!important;border-radius:8px!important;flex:1}
+#vividGoalsPage .gs-tick-control:hover{background:#f5eefb!important}
+#vividGoalsPage .gs-tick-control:focus-visible,
+#vividGoalsPage .gs-milestone-tick:focus-visible {outline:3px solid #b68ed5!important;outline-offset:3px!important}
+#vividGoalsPage .gs-tick-box{
+  width:20px!important;height:20px!important;min-width:20px!important;
+  display:grid!important;place-items:center!important;flex-shrink:0!important;
+  border:2px solid #afa1be!important;background:#fff!important;
+  border-radius:5px!important;font-size:14px!important;line-height:1!important;
+  color:#fff!important;font-weight:900!important;transition:background .12s,border-color .12s;
+}
+#vividGoalsPage .gs-tick-control.is-checked>.gs-tick-box,
+#vividGoalsPage .gs-milestone-tick.is-checked>.gs-tick-box {
+  border-color:#6a36a5!important;background:#6a36a5!important;color:#fff!important;
+}
+#vividGoalsPage .gs-tick-control.is-checked .goals-task-name,
+#vividGoalsPage .gs-tick-control.is-checked>span:last-child{color:#5c2988!important;font-weight:800!important}
+#vividGoalsPage .gs-task-left.gs-tick-control{width:auto}
+#vividGoalsPage .goals-milestone>.gs-milestone-tick{
+  display:grid!important;place-items:center!important;flex-shrink:0!important;padding:6px!important;
+  border-radius:9px!important;min-width:36px!important;min-height:36px!important;
+}
+#vividGoalsPage .goals-milestone>.gs-milestone-tick:hover{background:#f5eefb!important}
+#vividGoalsPage .gs-sat-milestone{
+  display:flex!important;align-items:center!important;gap:11px!important;
+  width:100%!important;min-height:47px!important;padding:5px!important;border-radius:9px!important;
+}
+#vividGoalsPage .gs-sat-milestone>span:last-child{display:flex;flex-direction:column;gap:6px}
+#vividGoalsPage .gs-sat-milestone b{font-size:13px;color:#3b2854}
+#vividGoalsPage .gs-sat-milestone small{font-size:11px;color:#97869d}
+#vividGoalsPage .gs-skill-task:has(.gs-tick-control.is-checked),
+#vividGoalsPage .goals-task:has(.gs-tick-control.is-checked){background:#faf5ff!important;border-radius:10px!important}
