@@ -148,6 +148,70 @@ function specificSentence(term,key,actor,area){
  'Cuts to essential services could have '+term+' for public health.',
  'Decisions made today may have '+term+' for future generations.',
  'The failure to invest in training could have '+term+' for regional employment.'];
+ else if(/^(in terms of|with regard to|in relation to|with respect to)$/.test(t))options=[
+ 'Researchers evaluated the proposal '+term+' its long-term environmental impact.',
+ 'The scheme should be judged '+term+' affordability and public access.',
+ 'The final report compared several approaches '+term+' their likely costs.',
+ 'Local officials discussed the programme '+term+' the needs of families.',
+ 'The review assessed each option '+term+' its effect on employment.',
+ 'Public investment was considered '+term+' its impact on education.',
+ 'The survey examined progress '+term+' fairness and regional differences.'];
+ else if(/^(because of|due to|owing to|as a result of)$/.test(t))options=[
+ 'The council revised its plans '+term+' growing pressure on local services.',
+ 'Several schools changed their timetables '+term+' a shortage of teachers.',
+ 'The project was delayed '+term+' unexpected increases in construction costs.',
+ 'Public demand rose '+term+' improvements in the transport network.',
+ 'Researchers adjusted the survey '+term+' concerns about data quality.',
+ 'Some households moved further from the city '+term+' rising rents.',
+ 'The funding was increased '+term+' evidence of unmet community needs.'];
+ else if(/^(despite|in spite of)$/.test(t))options=[
+ 'The council approved the project '+term+' concerns about its cost.',
+ 'Many residents continued using buses '+term+' occasional delays.',
+ 'Schools maintained the programme '+term+' limited funding.',
+ 'The results remained encouraging '+term+' several practical obstacles.',
+ 'Researchers completed the study '+term+' difficulties collecting data.',
+ 'The policy gained support '+term+' criticism from some local groups.',
+ 'Public services improved '+term+' pressure on municipal budgets.'];
+ else if(/^(in addition to|along with|as well as)$/.test(t))options=[
+ 'The plan includes new cycle lanes '+term+' improvements to bus services.',
+ 'The council funded extra teachers '+term+' updated classroom equipment.',
+ 'The research considered household income '+term+' access to transport.',
+ 'The policy aims to improve healthcare '+term+' educational opportunities.',
+ 'Public consultations involved local residents '+term+' independent specialists.',
+ 'The report examined environmental outcomes '+term+' economic costs.',
+ 'The new scheme provides practical training '+term+' financial support.'];
+ else if(/^(a range of|a wide range of|a variety of)$/.test(t))options=[
+ 'The council introduced '+term+' measures to improve local transport.',
+ 'The programme offers '+term+' support services for working families.',
+ 'Schools now provide '+term+' learning opportunities outside the classroom.',
+ 'Researchers examined '+term+' explanations for the change in behaviour.',
+ 'The report proposed '+term+' practical solutions to rising energy costs.',
+ 'Community centres organise '+term+' activities for older residents.',
+ 'Local authorities considered '+term+' options before approving the budget.'];
+ else if(/^(a growing number of|an increasing number of|a large number of|a significant proportion of)$/.test(t))options=[
+ term.charAt(0).toUpperCase()+term.slice(1)+' households now rely on digital public services.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' students choose flexible learning arrangements.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' commuters use public transport during the week.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' young adults receive training in digital skills.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' businesses are investing in cleaner technologies.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' families are concerned about housing costs.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' schools offer additional support to learners.'];
+ else if(/^(a lack of|lack of|a shortage of)$/.test(t))options=[
+ term.charAt(0).toUpperCase()+term.slice(1)+' reliable transport can limit access to employment.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' affordable housing can force families to relocate.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' qualified teachers may affect educational outcomes.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' clear information often undermines public confidence.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' long-term planning can make reforms less effective.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' funding has delayed improvements to public services.',
+ term.charAt(0).toUpperCase()+term.slice(1)+' practical support may prevent vulnerable people from benefiting.'];
+ else if(/^(a key factor in|a major factor in|an important factor in)$/.test(t))options=[
+ 'Reliable funding is '+term+' improving healthcare access.',
+ 'Public transport is '+term+' creating more inclusive cities.',
+ 'Teacher training is '+term+' raising educational standards.',
+ 'Household income is '+term+' determining access to housing.',
+ 'Clear information is '+term+' maintaining public trust.',
+ 'Digital infrastructure is '+term+' expanding economic opportunities.',
+ 'Stable employment is '+term+' improving family wellbeing.'];
  else if(/^take into account$|^take account of$/.test(t))options=[
  'The council should '+term+' household income when reviewing transport fees.',
  'A credible policy must '+term+' the different needs of rural communities.',
