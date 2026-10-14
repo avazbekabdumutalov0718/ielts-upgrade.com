@@ -23,12 +23,23 @@ function kind(term){
  const t=term.toLowerCase();
  if(/ly$/.test(t)&&!t.includes(' '))return 'adverb';
  if(/^(on a |on an |in the long run|in the short term|at the same time|for this reason|as a result|by contrast|in contrast|on the other hand|over time|to a large extent)/.test(t))return 'adverbial';
+ if(/^to\s+[a-z]+/.test(t))return 'infinitive';
  if(/^(improving|reducing|promoting|addressing|protecting|providing|supporting|encouraging|investing|developing|using|building|making|creating|learning|raising)\b/.test(t))return 'gerund';
  if(/^(to )?(reduce|improve|address|promote|make|take|play|have|give|create|provide|tackle|raise|build|support|encourage|protect|adopt|achieve|establish|maintain|increase|decrease|develop|enhance|invest|ensure|foster|set|strike|meet|solve|implement|introduce|generate|gain|keep|bring|carry|offer|allow|help|consider|focus|deal|boost|stimulate|facilitate|mitigate|alleviate|strengthen|prioritise|prioritize|contribute|combat|overcome|prevent|expand|respond|recognise|recognize|transform|enable|preserve|strike|reach|achieve|bring|lead)\b/.test(t))return 'verb';
  if(/^(increasingly|widely|highly|broadly|particularly|deeply|fully|extremely|significantly|generally|largely|closely|strongly|relatively|quite)\s+/.test(t)||(!t.includes(' ')&&/(ous|ive|ful|less|able|ible|al|ic|ary|ent|ant|ed)$/.test(t)))return 'adjective';
  return 'noun';
 }
 const frame={
+ infinitive:[
+ (t,a,p)=>'The council hopes '+t+' before the next consultation.',
+ (t,a,p)=>'The main objective of the new strategy is '+t+' over the next decade.',
+ (t,a,p)=>'The initiative was introduced '+t+' in disadvantaged communities.',
+ (t,a,p)=>'Public institutions are working '+t+' without increasing unnecessary costs.',
+ (t,a,p)=>'Regional authorities have promised '+t+' through targeted public investment.',
+ (t,a,p)=>'The proposed reforms were designed '+t+' while protecting essential services.',
+ (t,a,p)=>'The committee recommended several measures '+t+' with community support.',
+ (t,a,p)=>'Decision-makers need '+t+' if they hope to improve long-term outcomes.'
+ ],
  noun:[
  (t,a,p)=>'During a review of '+p+', '+a+' examined '+t+' in greater detail.',
  (t,a,p)=>'The consultation raised questions about '+t+' and the likely consequences for local families.',
@@ -249,7 +260,7 @@ function specificSentence(term,key,actor,area){
 const cached=new Map(),globalUsed=new Set();
 function sentence(card,mode){
  const k=card.id+'|'+card.topic+'|'+mode;if(cached.has(k))return cached.get(k);
- const term=card.term.replace(/^to\s+/i,''),d=domain(card.topic,term),type=kind(term),bank=frame[type];
+ const term=card.term,d=domain(card.topic,term),type=kind(term),bank=frame[type];
  const offsets={'flashcard':0,'multiple-choice':1,'fill-gap':2,'word-rush':3,'typing':4,'sentence-builder':5,'study-0':6,'study-1':7};
  const offset=offsets[mode]===undefined?hash(mode)%8:offsets[mode];
  const base=hash(card.id+'@'+card.topic)%8;
@@ -266,7 +277,7 @@ function cardsOf(items,topic){
  return (Array.isArray(items)?items:[]).filter(o=>o&&typeof o==='object').map((o,i)=>({id:'writing:'+String(topic||o.topic||'IELTS Writing')+':'+String(o.id||i),term:tidy(o.term||o.w||o.phrase||o.collocation),uz:tidy(o.uz||o.u||o.translation||o.meaning||o.d||o.definition||''),topic:String(topic||o.topic||'IELTS Writing')})).filter(x=>{if(!x.term||seen.has(norm(x.term)))return false;seen.add(norm(x.term));return true});
 }
 function blank(card,mode){
- const text=sentence(card,mode),rx=new RegExp(escapeRx(card.term.replace(/^to\s+/i,'')),'i');
+ const text=sentence(card,mode),rx=new RegExp(escapeRx(card.term),'i');
  return text.replace(rx,'________');
 }
 const modes=['Flashcards','Multiple Choice','Matching Pairs','Fill the Gap','Word Rush','Typing Race','Sentence Builder'];
