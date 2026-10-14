@@ -72,7 +72,7 @@
     if(required){
       let count=nval(d.counts?.[task.id]);
       if(task.rolling) count+=nval(s.days[prevDay(day)]?.counts?.[task.id]);
-      return !!d.checks?.[task.id] || count>=required;
+      return Object.prototype.hasOwnProperty.call(d.checks||{},task.id) ? !!d.checks[task.id] : count>=required;
     }
     return !!d.checks?.[task.id];
   };
@@ -218,7 +218,7 @@
     if(task.target){
       // Checking a quantity task fills the target; unchecking resets today's amount.
       const goal=nval(state.extras?.targets?.[taskId])||task.target;
-      d.counts[taskId]=checked?goal:0;
+      d.counts[taskId]=checked?(task.rolling?Math.max(0,goal-nval(state.days[prevDay(day)]?.counts?.[taskId])):goal):0;
     }
     changed(day);
     render();
@@ -246,9 +246,11 @@
         const count=nval(current.counts?.[t.id]);
         const rolling=t.rolling?nval(state.days[prevDay(selected)]?.counts?.[t.id]):0;
         return `<div class="goals-task ${checked?'is-done':''}">
-          <div class="goals-task-main"><label class="goals-task-label">
-          <input type="checkbox" data-goal-check="${t.id}" ${checked?'checked':''} aria-label="${safe(effectiveName)}">
-          <span class="goals-task-name">${safe(effectiveName)}</span></label></div><div class="goals-proof-anchor" data-proof-task="${t.id}" data-proof-day="${selected}"></div>
+          <div class="goals-task-main">
+          <button type="button" class="goals-task-label gs-tick-control ${checked?'is-checked':''}" data-goal-toggle="${t.id}" aria-pressed="${checked?'true':'false'}" aria-label="${safe(effectiveName)} — ${checked?'bajarildi':'bajarilmadi'}">
+            <span class="gs-tick-box" aria-hidden="true">${checked?'✓':''}</span>
+            <span class="goals-task-name">${safe(effectiveName)}</span>
+          </button></div><div class="goals-proof-anchor" data-proof-task="${t.id}" data-proof-day="${selected}"></div>
           ${effectiveTarget?`<div class="goals-number"><input type="number" min="0" max="99999" step="1" inputmode="numeric" data-goal-count="${t.id}" value="${count}" aria-label="${safe(effectiveName)}: miqdor"><span>${t.rolling?`${count}+ ${rolling} (oldingi kun) / ${effectiveTarget}`:`/ ${effectiveTarget}`}</span></div>`:''}
         </div>`;
       }).join('')}</div></section>`;
@@ -265,7 +267,7 @@
       <section class="goals-milestones"><div class="goals-section-title"><div><span>YOUR BIG GOALS</span><h2>Maqsadlar va muddatlar</h2></div><small>PDFda yil belgilanmagan; sanalar aynan kiritilgan.</small></div>
         <div class="goals-milestone-grid">${MILESTONES.map(m=>`<label class="goals-milestone ${state.milestones[m.id]?'is-done':''}">
           <span class="goals-milestone-icon">${m.icon}</span><span><small>${m.group}</small><b>${safe(m.title)}</b><em>${safe(m.date)}</em></span>
-          <input type="checkbox" data-goal-milestone="${m.id}" ${state.milestones[m.id]?'checked':''} aria-label="${safe(m.title)}"><span class="goals-proof-anchor" data-proof-task="milestone_${m.id}" data-proof-day="${selected}"></span></label>`).join('')}</div>
+          <button type="button" class="gs-milestone-tick ${state.milestones[m.id]?'is-checked':''}" data-goal-milestone-toggle="${m.id}" aria-pressed="${state.milestones[m.id]?'true':'false'}" aria-label="${safe(m.title)} — ${state.milestones[m.id]?'bajarildi':'bajarilmadi'}"><span aria-hidden="true">${state.milestones[m.id]?'✓':''}</span></button><span class="goals-proof-anchor" data-proof-task="milestone_${m.id}" data-proof-day="${selected}"></span></label>`).join('')}</div>
       </section>
       <section class="goals-workspace"><div class="goals-section-title"><div><span>DAILY HABITS · 15 OCTOBER 2026 →</span><h2>Kunlik tracker</h2></div>
         <label class="goals-date-picker">Sana <input id="goalsSelectedDate" type="date" min="${START}" value="${selected}"></label></div>
@@ -290,6 +292,24 @@
     updateMenu();
     pulseTimer=setInterval(updateMenu,1200);
     document.addEventListener('click',e=>{
+      const taskButton=e.target.closest('[data-goal-toggle]');
+      if(taskButton&&taskButton.closest('#vividGoalsPage')){
+        e.preventDefault();e.stopPropagation();
+        if(!visible||!isOwnerSession()||selected<START)return;
+        const task=TASKS.find(t=>t.id===taskButton.dataset.goalToggle);
+        if(task)mark(selected,task.id,!done(state,selected,task));
+        return;
+      }
+      const milestoneButton=e.target.closest('[data-goal-milestone-toggle]');
+      if(milestoneButton&&milestoneButton.closest('#vividGoalsPage')){
+        e.preventDefault();e.stopPropagation();
+        if(!visible||!isOwnerSession())return;
+        const mid=milestoneButton.dataset.goalMilestoneToggle;
+        if(!MILESTONES.some(m=>m.id===mid))return;
+        state.milestones[mid]=!state.milestones[mid];
+        state.milestonesUpdatedAt=new Date().toISOString();changed();render();
+        return;
+      }
       if(e.target.closest('#'+NAV_ID)){e.preventDefault();open();return;}
       if(e.target.closest('#primaryNav [data-view]')){visible=false;document.getElementById(NAV_ID)?.classList.remove('active');}
     },true);
@@ -306,7 +326,7 @@
       }else if(t.hasAttribute('data-goal-count')){
         const d=dayState(selected);d.counts??={};d.checks??={};
         d.counts[t.dataset.goalCount]=Math.floor(nval(t.value));
-        d.checks[t.dataset.goalCount]=false;
+        delete d.checks[t.dataset.goalCount];
         changed(selected);render();
       }else if(t.id==='goalsHours'){
         dayState(selected).hours=t.value===''?'':Math.min(24,Math.max(0,Number(t.value)||0));
