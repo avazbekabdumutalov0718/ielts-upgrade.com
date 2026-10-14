@@ -206,7 +206,7 @@
       '<label>Session rating (1–10)<input name="rating" type="number" min="1" max="10" value="8" required></label>'+
       '<button type="submit">+ Add manual session</button></div></form></section>'+
      '<section class="ga-panel"><h3>⭐ Study Session Rating · History</h3>'+
-     (list.length?'<div class="ga-session-list">'+list.slice().reverse().map(x=>'<div><span>'+esc(x.category)+'<small>'+esc(x.source||'focus')+'</small></span><b>'+hh(mins(x.minutes))+'</b><em>'+esc(x.rating||'—')+'/10</em><button type="button" data-ga-session-remove="'+esc(x.id)+'">×</button></div>').join('')+'</div>':'<p class="ga-muted">Hali sessiya qayd qilinmagan.</p>')+'</section>';
+     (list.length?'<div class="ga-session-list">'+list.slice().reverse().map(x=>'<div data-session-id="'+esc(x.id)+'"><span>'+esc(x.category)+'<small>'+esc(x.source||'focus')+'</small></span><b>'+hh(mins(x.minutes))+'</b><em>'+esc(x.rating||'—')+'/10</em><button type="button" data-ga-session-remove="'+esc(x.id)+'">×</button></div>').join('')+'</div>':'<p class="ga-muted">Hali sessiya qayd qilinmagan.</p>')+'</section>';
  }
  function analytics(s){
    const st=stats(s),today=localDate(),last=st.days[st.days.length-1]||START;
