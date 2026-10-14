@@ -6,6 +6,7 @@ const lower=s=>tidy(s).toLowerCase().replace(/[’‘]/g,"'");
 function hash(s){let n=2166136261;for(const c of String(s)){n^=c.charCodeAt(0);n=Math.imul(n,16777619)}return n>>>0}
 function mix(arr,seed){return arr.map((v,i)=>({v,n:hash(seed+':'+i+':'+v)})).sort((a,b)=>a.n-b.n).map(x=>x.v)}
 function distinct(a){return [...new Set(a.filter(Boolean).map(tidy))]}
+const rxEsc=s=>String(s).replace(/[.*+?^$()|[\]{}\\]/g,'\\function distinct(a){return [...new Set(a.filter(Boolean).map(tidy))]}');
 function selections(answer,choices,seed){return mix([answer,...mix(distinct(choices).filter(x=>lower(x)!==lower(answer)),seed).slice(0,3)],seed+'-last')}
 function refresh(db){
  if(!db||db.__writingGrammarRevision==='2026-10-14')return db;
@@ -35,9 +36,9 @@ function refresh(db){
    for(let j=0;j<3;j++){
      const en=models(j).en, words=(name.toLowerCase().match(/[a-z]+/g)||[]);
      const candidates=[...triggers.filter(x=>words.includes(x.split(' ')[0])),...triggers];
-     const token=candidates.find(x=>en.toLowerCase().includes(x))||(en.match(/[A-Za-z']+/g)||[])[0];
+     const token=candidates.find(x=>new RegExp('\\b'+rxEsc(x)+'\\b','i').test(en))||(en.match(/[A-Za-z']+/g)||[])[0];
      if(!token)continue;
-     const at=en.toLowerCase().indexOf(token.toLowerCase());
+     const at=en.search(new RegExp('\\b'+rxEsc(token)+'\\b','i'));
      const blank=en.slice(0,at)+'________'+en.slice(at+token.length);
      add('gap','GAP FILL','Supply the missing word or phrase in this authentic model:\n'+blank,token,[],false,en);
    }
@@ -48,8 +49,9 @@ function refresh(db){
      add('reorder','WORD ORDER','Rebuild this sentence in the correct grammatical order:\n'+scrambled.join(' / '),en,[],false,en);
    }
    for(let j=0;j<3;j++){
-     const trueStatement=(j!==1),statement=trueStatement?ownMeaning:meanings[(hash(name+':false')+j)%Math.max(1,meanings.length)]||'This is a different structure.';
-     add('mcq','TRUE / FALSE','Does the following explanation describe "'+name+'"?\n'+statement,trueStatement?'True':'False',['True','False']);
+     const trueStatement=(j!==1);
+     const statement=j===0?ownMeaning:j===1?'This construction can only be used in informal messages and is never appropriate in academic writing.':'The following model illustrates this chapter’s target grammar: '+models(2).en;
+     add('mcq','TRUE / FALSE','Does the following statement accurately describe "'+name+'"?\n'+statement,trueStatement?'True':'False',['True','False']);
    }
    for(let j=0;j<3;j++){
      const e=models(j);
