@@ -39,7 +39,7 @@
  const completed=(s,day)=>knownTasks().filter(t=>isDone(s,day,t)).length;
  const activeDay=(s,day)=>day>=START&&(completed(s,day)>0||duration(s,day)>0||logs(s).some(x=>x.day===day));
  const sum=(arr,fn)=>arr.reduce((a,x)=>a+fn(x),0);
- let tab='dashboard',weekCursor=0,focused=null,focusCategory='Reading',manualCategory='Reading',focusElapsed=0,focusSince=0,focusTicker=null;
+ let tab='dashboard',weekCursor=0,focused=null,focusCategory='Reading',manualCategory='Reading',focusPrefsLoaded=false,focusElapsed=0,focusSince=0,focusTicker=null;
  let reminderPending=false, chartPeriod=30, editingDay=null, periodMode='week', periodAnchor=(localDate()<START?START:localDate());
  function appendStyleSafe(){
    if(document.getElementById('goalsAdvancedStyles'))return;
@@ -360,6 +360,12 @@
    const root=document.getElementById('vividGoalsPage'),s=current();
    if(!root||!s||!authorized())return;
    appendStyleSafe();
+   if(!focusPrefsLoaded){
+     const preferences=extra(s).settings||{};
+     if(SKILLS.includes(preferences.focusCategory))focusCategory=preferences.focusCategory;
+     if(SKILLS.includes(preferences.manualCategory))manualCategory=preferences.manualCategory;
+     focusPrefsLoaded=true;
+   }
    root.dataset.gaTab=tab;
    const area=document.createElement('section');
    area.className='ga-enhanced';
@@ -408,20 +414,14 @@
        return;
      }
      focusCategory=skill;
-     document.querySelectorAll('#vividGoalsPage [data-ga-focus-skill]').forEach(btn=>{
-       const on=btn.dataset.gaFocusSkill===skill;btn.classList.toggle('selected',on);btn.setAttribute('aria-pressed',String(on));
-     });
-     const hidden=document.getElementById('gaFocusCat');if(hidden)hidden.value=skill;
+     update(ex=>{initialize(ex);ex.settings.focusCategory=skill});
      return;
    }
    if((el=e.target.closest('[data-ga-manual-skill]'))){
      const skill=el.dataset.gaManualSkill;
      if(!SKILLS.includes(skill))return;
      manualCategory=skill;
-     document.querySelectorAll('#vividGoalsPage [data-ga-manual-skill]').forEach(btn=>{
-       const on=btn.dataset.gaManualSkill===skill;btn.classList.toggle('selected',on);btn.setAttribute('aria-pressed',String(on));
-     });
-     const hidden=document.getElementById('gaManualCategory');if(hidden)hidden.value=skill;
+     update(ex=>{initialize(ex);ex.settings.manualCategory=skill});
      return;
    }
    if((el=e.target.closest('[data-ga-period]'))){periodMode=el.dataset.gaPeriod;api().refresh();return;}
