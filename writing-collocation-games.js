@@ -199,7 +199,7 @@ function sentence(card,mode){
 }
 function cardsOf(items,topic){
  const seen=new Set();
- return (Array.isArray(items)?items:[]).map((o,i)=>({id:String(o.id||'writing:'+topic+':'+i),term:tidy(o.term||o.w||o.phrase||o.collocation),uz:tidy(o.uz||o.u||o.translation||o.meaning||''),topic:String(topic||o.topic||'IELTS Writing')})).filter(x=>{if(!x.term||seen.has(norm(x.term)))return false;seen.add(norm(x.term));return true});
+ return (Array.isArray(items)?items:[]).map((o,i)=>({id:'writing:'+String(topic||o.topic||'IELTS Writing')+':'+String(o.id||i),term:tidy(o.term||o.w||o.phrase||o.collocation),uz:tidy(o.uz||o.u||o.translation||o.meaning||o.d||o.definition||''),topic:String(topic||o.topic||'IELTS Writing')})).filter(x=>{if(!x.term||seen.has(norm(x.term)))return false;seen.add(norm(x.term));return true});
 }
 function blank(card,mode){
  const text=sentence(card,mode),rx=new RegExp(escapeRx(card.term.replace(/^to\s+/i,'')),'i');
