@@ -25,7 +25,7 @@ function kind(term){
  if(/^(on a |on an |in the long run|in the short term|at the same time|for this reason|as a result|by contrast|in contrast|on the other hand|over time|to a large extent)/.test(t))return 'adverbial';
  if(/^(improving|reducing|promoting|addressing|protecting|providing|supporting|encouraging|investing|developing|using|building|making|creating|learning|raising)\b/.test(t))return 'gerund';
  if(/^(to )?(reduce|improve|address|promote|make|take|play|have|give|create|provide|tackle|raise|build|support|encourage|protect|adopt|achieve|establish|maintain|increase|decrease|develop|enhance|invest|ensure|foster|set|strike|meet|solve|implement|introduce|generate|gain|keep|bring|carry|offer|allow|help|consider|focus|deal|boost|stimulate|facilitate|mitigate|alleviate|strengthen|prioritise|prioritize|contribute|combat|overcome|prevent|expand|respond|recognise|recognize|transform|enable|preserve|strike|reach|achieve|bring|lead)\b/.test(t))return 'verb';
- if(/^(highly|increasingly|particularly|deeply|fully|extremely|significantly|widely|broadly|generally|largely|closely|strongly|relatively|quite)\s+\w+(ed|ive|al|able|ous|ent|ant|ful|ic|ary|ible|less)\b/.test(t)||(!t.includes(' ')&&/(ous|ive|ful|less|able|ible|al|ic|ary|ent|ant|ed)$/.test(t)))return 'adjective';
+ if(/^(increasingly|widely|highly|broadly|particularly|deeply|fully|extremely|significantly|generally|largely|closely|strongly|relatively|quite)\s+/.test(t)||(!t.includes(' ')&&/(ous|ive|ful|less|able|ible|al|ic|ary|ent|ant|ed)$/.test(t)))return 'adjective';
  return 'noun';
 }
 const frame={
@@ -92,7 +92,47 @@ const frame={
 };
 function specificSentence(term,key,actor,area){
  const t=term.toLowerCase();let options=[];
- if(/^take into account$|^take account of$/.test(t))options=[
+ if(/^(increasingly difficult|widely recognised|widely recognized|highly effective)$/.test(t))options=[
+ 'Providing affordable services has become '+term+' as demand continues to rise.',
+ 'The importance of careful long-term planning is '+term+' among independent experts.',
+ 'The proposed reform was described as '+term+' after a detailed evaluation.',
+ 'Meeting the needs of a growing population is becoming '+term+' for local authorities.',
+ 'The challenges facing public institutions have become '+term+' in recent years.',
+ 'The approach appears '+term+' when supported by reliable evidence.',
+ 'Ensuring equal opportunities may become '+term+' without sustained investment.'];
+ else if(/^(make a positive contribution|make a significant contribution|make an important contribution)$/.test(t))options=[
+ 'Community groups can '+term+' to neighbourhood development.',
+ 'Universities often '+term+' to the growth of regional economies.',
+ 'Volunteers may '+term+' to the wellbeing of vulnerable families.',
+ 'Local businesses can '+term+' to the creation of stable jobs.',
+ 'Public libraries continue to '+term+' to learning opportunities.',
+ 'Teachers can '+term+' to students’ long-term development.',
+ 'Independent organisations hope to '+term+' to social inclusion.'];
+ else if(/^(?:an? |the )?(?:significant|profound|positive|negative|considerable|lasting|major|substantial|far-reaching) impact$/.test(t))options=[
+ 'The changes had '+term+' on the cost of public transport.',
+ 'The new programme could have '+term+' on students from disadvantaged backgrounds.',
+ 'The revised guidelines are expected to have '+term+' on local businesses.',
+ 'Investment in preventive care can have '+term+' on community health.',
+ 'The funding reduction may have '+term+' on educational opportunities.',
+ 'Affordable housing policies could have '+term+' on family wellbeing.',
+ 'The decision has had '+term+' on the long-term prospects of rural towns.'];
+ else if(/^(?:an? |the )?(?:sharp|dramatic|significant|steady|rapid|substantial) (?:increase|decrease|rise|decline)$/.test(t))options=[
+ 'The latest survey recorded '+term+' in demand for affordable housing.',
+ 'Researchers observed '+term+' in the use of public transport.',
+ 'The annual report showed '+term+' in the proportion of online learners.',
+ 'The study identified '+term+' in household energy costs.',
+ 'The figures indicate '+term+' in the number of people using the service.',
+ 'Regional authorities reported '+term+' in investment during the year.',
+ 'The chart illustrates '+term+' in employment over the reporting period.'];
+ else if(/^(far-reaching consequences|long-term consequences|serious consequences)$/.test(t))options=[
+ 'Poorly planned reforms can have '+term+' for families on low incomes.',
+ 'An abrupt rise in tuition fees could have '+term+' for disadvantaged students.',
+ 'Ignoring water shortages may have '+term+' for rural communities.',
+ 'A lack of effective regulation can have '+term+' for consumer confidence.',
+ 'Cuts to essential services could have '+term+' for public health.',
+ 'Decisions made today may have '+term+' for future generations.',
+ 'The failure to invest in training could have '+term+' for regional employment.'];
+ else if(/^take into account$|^take account of$/.test(t))options=[
  'The council should '+term+' household income when reviewing transport fees.',
  'A credible policy must '+term+' the different needs of rural communities.',
  'Researchers need to '+term+' regional differences before drawing conclusions.',
@@ -117,22 +157,25 @@ function specificSentence(term,key,actor,area){
  'The research group will '+term+' the wider effects of the policy.',
  'Decision-makers should '+term+' evidence before setting priorities.'];
  else if(/^(as a result|for this reason|on the other hand|in contrast|by contrast|in the long run|in the short term|at the same time)$/.test(t))options=[
- term+', sustained investment could improve access to essential services.',
- term+', the committee recommended reviewing the current approach.',
- term+', small businesses may struggle to absorb the additional costs.',
- term+', the benefits of the policy may become clearer over time.',
- term+', local communities need reliable information before deciding.',
- term+', the research highlights the importance of long-term planning.',
- term+', a balanced response would address both costs and benefits.'];
- return options.length?options[hash(key)%options.length]:null;
+ term.charAt(0).toUpperCase()+term.slice(1)+', sustained investment could improve access to essential services.',
+ term.charAt(0).toUpperCase()+term.slice(1)+', the committee recommended reviewing the current approach.',
+ term.charAt(0).toUpperCase()+term.slice(1)+', small businesses may struggle to absorb the additional costs.',
+ term.charAt(0).toUpperCase()+term.slice(1)+', the benefits of the policy may become clearer over time.',
+ term.charAt(0).toUpperCase()+term.slice(1)+', local communities need reliable information before deciding.',
+ term.charAt(0).toUpperCase()+term.slice(1)+', the research highlights the importance of long-term planning.',
+ term.charAt(0).toUpperCase()+term.slice(1)+', a balanced response would address both costs and benefits.'];
+ return options.length?options[Math.abs(Number(key)||0)%options.length]:null;
 }
 const cached=new Map(),globalUsed=new Set();
 function sentence(card,mode){
  const k=card.id+'|'+card.topic+'|'+mode;if(cached.has(k))return cached.get(k);
  const term=card.term.replace(/^to\s+/i,''),d=domain(card.topic,term),type=kind(term),bank=frame[type];
+ const offsets={'flashcard':0,'multiple-choice':1,'fill-gap':2,'word-rush':3,'typing':4,'sentence-builder':5,'study-0':6,'study-1':7};
+ const offset=offsets[mode]===undefined?hash(mode)%8:offsets[mode];
+ const base=hash(card.id+'@'+card.topic)%8;
  let output='';
  for(let i=0;i<bank.length;i++){
-   output=specificSentence(term,k+'|'+i,d[0],d[1])||bank[(hash(k)+i)%bank.length](term,d[0],d[1]);
+   output=specificSentence(term,base+offset+i,d[0],d[1])||bank[(base+offset+i)%bank.length](term,d[0],d[1]);
    if(!globalUsed.has(norm(output)))break;
  }
  if(globalUsed.has(norm(output)))output=output+' The recommendation will be reviewed again next year.';
