@@ -50,5 +50,6 @@
       "destination": "/:path*",
       "permanent": false
     }
-  ]
+  ],
+  "buildCommand": "node tools/practice/release-check.cjs"
 }

@@ -1,171 +1,60 @@
-(() => {
+/* Original, reviewed exercise sentences. Source passages are never a fallback. */
+(function (root) {
   'use strict';
-  const VERSION='v46-2026-10-13-all-exercises-independent-seeds';
+  const VERSION = 'original-practice-v1';
+  const BANK_URL = '/practice-sentences/bank.json?v=' + VERSION;
+  let bank = null, pending = null;
 
-  function hash(input){let x=2166136261>>>0;for(const ch of String(input||'')){x^=ch.charCodeAt(0);x=Math.imul(x,16777619)>>>0}return x>>>0}
-  const choose=(arr,seed,step=0)=>arr[((seed+(step*2654435761>>>0))>>>0)%arr.length];
-
-  const scenes=[
-    'during a Monday seminar','after a school debate','while planning a group project','during a library study session',
-    'after reading a research article','in a conversation with a classmate','during a mock IELTS interview','while preparing a presentation',
-    'at a community meeting','during a university workshop','after comparing two reports','while reviewing exam notes',
-    'during an online class','after a teacher gave feedback','while discussing a local issue','during a study-group break',
-    'after watching a documentary','while analysing a survey','during a career-planning session','after a classroom experiment',
-    'while preparing for a speaking test','during a writing practice session','after reading the morning news','while working on a science project',
-    'during a student council meeting','after a short podcast episode','while discussing a case study','during an evening revision session',
-    'after checking several sources','while preparing a class poster','during a peer-feedback session','after a weekend field trip'
-  ];
-
-  const reasons=[
-    'because the first explanation was too vague','so the main point became easier to understand','because the group needed a more precise example',
-    'and the discussion immediately became more specific','so everyone could see the practical consequence','because the evidence pointed in that direction',
-    'and it helped separate fact from opinion','so the speaker could avoid repeating basic words','because the contrast mattered in that example',
-    'and it gave the answer a clearer focus','so the conclusion sounded more convincing','because the situation had changed unexpectedly',
-    'and it connected the example to real life','so the listener could follow the argument more easily','because the detail was important for the final decision',
-    'and it made the comparison more balanced','so the paragraph had a stronger central idea','because the class wanted a concrete illustration',
-    'and it clarified what happened next','so the explanation did not sound memorised','because the topic required a careful distinction',
-    'and it made the cause-and-effect relationship clearer','so the example supported the claim directly','because the group was comparing different viewpoints',
-    'and it helped the speaker sound more natural','so the listener understood the intended meaning at once','because the point needed a realistic context',
-    'and it strengthened the final response','so the idea fitted the topic instead of sounding generic','because the example needed a clear outcome',
-    'and it made the explanation easier to remember','so the sentence carried one precise message'
-  ];
-
-  const nounFrames=[
-    t=>'The discussion focused on '+t,
-    t=>'The report highlighted '+t,
-    t=>'The class examined '+t,
-    t=>'The speaker raised the issue of '+t,
-    t=>'The article drew attention to '+t,
-    t=>'The group compared different views on '+t,
-    t=>'The presentation included a clear example of '+t,
-    t=>'The students questioned the role of '+t,
-    t=>'The final paragraph returned to '+t,
-    t=>'The survey revealed an important pattern involving '+t,
-    t=>'The teacher asked the class to think about '+t,
-    t=>'The case study showed why '+t+' matters',
-    t=>'The debate became more interesting when '+t+' came up',
-    t=>'The researcher linked the results to '+t,
-    t=>'The team identified '+t+' as a key factor',
-    t=>'The interview touched on '+t
-  ];
-
-  const verbSubjects=['Many students','Young professionals','Local residents','The research team','Several classmates','New employees','Language learners','Community volunteers','University students','Small businesses','Parents','Teachers','City planners','Online learners','Project teams','International students'];
-  const verbTails=['when the deadline is close','when they need a practical result','before making a final decision','when the original plan stops working','to improve the outcome','to deal with an unexpected problem','when they want a more reliable result','before the next stage begins','when time is limited','to make steady progress','when the situation becomes more demanding','after receiving detailed feedback','when they need to adapt quickly','to avoid the same mistake again','before presenting their work','when the evidence changes'];
-  const adjSubjects=['The proposal','The new policy','The final result','The change','The solution','The argument','The trend','The method','The response','The evidence','The design','The decision','The plan','The situation','The outcome','The approach'];
-  const advSubjects=['The figures changed','The students responded','The situation developed','The project improved','The discussion shifted','The results differed','The costs increased','The team adapted','The pattern changed','The speaker reacted','The process moved','The demand grew','The performance improved','The conditions changed','The group responded','The outcome shifted'];
-
-  const commonVerbs=new Set('achieve adapt address adopt affect allow analyse avoid balance become begin build change choose compare consider create cut deal decide develop encourage expand explain explore face find focus gain get give handle help improve increase keep learn make manage maintain meet overcome prevent protect provide raise reach reduce replace solve spend support take track understand use work'.split(' '));
-
-  function typeOfTerm(term,def){
-    const t=String(term||'').trim().toLowerCase();
-    const first=t.split(/\s+/)[0].replace(/[^a-z'-]/g,'');
-    const d=String(def||'').trim().toLowerCase();
-    if(!t.includes(' ')&&/ly$/.test(t))return'adverb';
-    if(d.startsWith('to ')||commonVerbs.has(first)||/^(be|have|do|make|take|give|keep|set|put|come|go|get|cut|bring|carry|look|work|play|learn|study|use|show|lead|find|build|develop|improve|reduce|increase|create|provide|support|protect|avoid|encourage|manage|maintain|expand|gain|achieve|overcome|deal|focus|raise|address|adopt|adapt)\b/.test(t))return'verb';
-    if(!t.includes(' ')&&/(ous|ive|ful|less|able|ible|al|ic|ary|ory|ent|ant|ed|ing)$/.test(t))return'adj';
-    return'noun';
+  function normalize(value) {
+    return String(value ?? '').normalize('NFC').toLowerCase()
+      .replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim();
   }
-
-  // Independently mixed choices prevent correlated 16/32-element template cycles.
-  function scrambledHash(input) {
-    let n=hash(input);n^=n>>>16;n=Math.imul(n,0x7feb352d)>>>0;
-    n^=n>>>15;n=Math.imul(n,0x846ca68b)>>>0;n^=n>>>16;
-    return n>>>0;
+  function termOf(entry) {
+    return typeof entry === 'string' ? entry : entry?.w || entry?.term || entry?.word || '';
   }
-  function sentence(w,slot=0){
-    const term=String(w?.w||w?.term||'').trim();
-    if(!term)return'';
-    const def=String(w?.d||w?.u||w?.uz||'').trim();
-    const seed=String(w?.id??term)+'|'+String(w?.t||w?.kind||'')+'|'+String(slot);
-    const choosePart=(arr,salt)=>arr[scrambledHash(seed+'|'+salt)%arr.length];
-    const scene=choosePart(scenes,'scene');
-    const reason=choosePart(reasons,'reason');
-    const kind=typeOfTerm(term,def);
-    let out='';
-    if(kind==='verb'){
-      out=choosePart(verbSubjects,'subject')+' often '+term+' '+choosePart(verbTails,'verb-tail')+' '+scene+', '+reason;
-    }else if(kind==='adj'){
-      out=choosePart(adjSubjects,'adj-subject')+' seemed '+term+' '+scene+', '+reason;
-    }else if(kind==='adverb'){
-      out=choosePart(advSubjects,'adv-subject')+' '+term+' '+scene+', '+reason;
-    }else{
-      out=choosePart(nounFrames,'noun-frame')(term)+' '+scene+', '+reason;
+  function expression(term) {
+    const pattern = String(term).normalize('NFC').trim().split(/\s+/).map(part =>
+      part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/[‘’']/g, "[‘’']")
+    ).join('\\s+');
+    return new RegExp('(?<![\\p{L}\\p{N}_’\'−-])' + pattern + '(?![\\p{L}\\p{N}_’\'−-])', 'giu');
+  }
+  function mask(sentence, term) {
+    if (!String(term || '').trim()) return '';
+    sentence = String(sentence || '').normalize('NFC');
+    const matches = [...sentence.matchAll(expression(term))];
+    if (matches.length !== 1) return '';
+    const match = matches[0];
+    return sentence.slice(0, match.index) + '_____' + sentence.slice(match.index + match[0].length);
+  }
+  function install(data) {
+    if (!data || data.version !== VERSION || !data.entries || typeof data.entries !== 'object') {
+      throw new Error('Practice sentence bank has an unsupported format.');
     }
-    return out.replace(/\s+/g,' ').replace(/\s+,/g,',').replace(/\.+$/,'')+'.';
+    bank = data;
+    return data;
   }
-
-  function escapeRx(s){return String(s||'').replace(/[.*+?^$(){}|[\]\\]/g,'\\$&')}
-  function mask(text,term){
-    try{const r=new RegExp(escapeRx(term),'i');if(r.test(text))return text.replace(r,'_____')}catch{}
-    return text+' _____';
+  async function load() {
+    if (bank) return bank;
+    if (!pending) pending = fetch(BANK_URL).then(response => {
+      if (!response.ok) throw new Error('Practice sentence bank could not be loaded.');
+      return response.json();
+    }).then(install).catch(error => { pending = null; throw error; });
+    return pending;
   }
-
-  // Sample answers remain unchanged in the study library.
-  // Game rounds use separate practice examples, including Fill the Gap,
-  // to avoid the same answer sentence being reused for several expressions.
-  const uniqueExamples=new Map();
-  const usedContexts=new Map();
-  const globallyUsedPracticeSentences=new Set();
-  function distinctPractice(w,slot){
-    const phraseKey=String(w?.id??w?.w??'');
-    const key=phraseKey+'|'+slot;
-    if(uniqueExamples.has(key))return uniqueExamples.get(key);
-    const used=usedContexts.get(phraseKey)||new Set();
-    let output='';
-    for(let i=0;i<256;i++){
-      output=sentence(w,slot+i*1009);
-      if(!used.has(output)&&!globallyUsedPracticeSentences.has(output))break;
-    }
-    used.add(output);globallyUsedPracticeSentences.add(output);usedContexts.set(phraseKey,used);
-    uniqueExamples.set(key,output);
-    return output;
+  function get(entry, purpose = 'gap') {
+    const term = termOf(entry), key = normalize(term);
+    const row = bank && Object.hasOwn(bank.entries, key) ? bank.entries[key] : null;
+    if (!row) return null;
+    const sentence = row[purpose === 'builder' || purpose === 'sentence' ? 'builder' : 'gap'];
+    const masked = mask(sentence, term);
+    if (!masked) return null;
+    return { sentence, masked, answer: term,
+      tokens: sentence.split(/\s+/).map((text, id) => ({ text, id })) };
   }
-  function sourceOrPractice(w,slot=0){
-    return distinctPractice(w,slot);
+  function missing(entries) {
+    return [...new Set(entries.filter(entry => !get(entry, 'gap') || !get(entry, 'builder')).map(termOf))];
   }
-
-  try{
-    practiceExampleFor=(w,variant=0)=>sourceOrPractice(w,100+Number(variant||0));
-    naturalExampleFor=(w,variant=0)=>sourceOrPractice(w,200+Number(variant||0));
-    gapText=(w,variant=0)=>mask(sourceOrPractice(w,300+Number(variant||0)),w.w);
-
-    gameTypingPrompt=(w)=>{
-      const n=hash(String(w.id??w.w)+'|typing')%4;
-      if(n===0)return{label:w.sampleAnswerSource?'Yangi mashq gapidagi bo‘shliqni to‘ldiring':'Yangi kontekstdagi bo‘shliqni to‘ldiring',text:mask(sourceOrPractice(w,401),w.w)};
-      if(n===1)return{label:'O‘zbekcha ma’noga qarab inglizchasini yozing',text:w.u};
-      if(n===2)return{label:w.sampleAnswerSource?'Boshqa mashq gapidan iborani yozing':'Boshqa kontekstdagi iborani yozing',text:mask(sourceOrPractice(w,402),w.w)};
-      return{label:'Harf yordami bilan so‘z yoki iborani yozing',text:String(w.u||'')+' · '+String(w.w||'').split(/\s+/).map(x=>x.charAt(0).toUpperCase()+'…').join(' ')};
-    };
-
-    gameChoicePrompt=(w,mode,index)=>{
-      const base=mode==='rush'?520:510;
-      const n=hash(String(w.id??w.w)+'|'+mode+'|'+index)%3;
-      if(n===0)return{reverse:false,label:'Kontekstdagi so‘z yoki iboraning ma’nosini toping',text:sourceOrPractice(w,base+(index%17))};
-      if(n===1)return{reverse:true,label:'Qaysi inglizcha so‘z yoki ibora shu ma’noga mos?',text:w.u};
-      return{reverse:false,label:'Yangi misoldagi iboraning o‘zbekcha ma’nosini toping',text:sourceOrPractice(w,base+31+(index%19))};
-    };
-
-    const oldCardMarkup=cardMarkup;
-    cardMarkup=(w,back=false,cls='')=>{
-      if(!back)return oldCardMarkup(w,false,cls);
-      return oldCardMarkup({...w,e:sourceOrPractice(w,600)},true,cls);
-    };
-  }catch(e){console.warn('Unique game context overrides:',e)}
-
-  try{
-    if(typeof maxSpeakingBank!=='undefined'&&Array.isArray(maxSpeakingBank.topics)){
-      for(const topic of maxSpeakingBank.topics){
-        for(const entry of topic.entries||[]){
-          const item={id:entry.id,w:entry.term,u:entry.uz,d:entry.uz,t:topic.title};
-          entry.examples=[sentence(item,701),sentence(item,702)];
-          entry.prompts=[
-            topic.title+': “'+entry.uz+'” ma’nosini o‘z fikringizda ishlating va bitta aniq sabab qo‘shing.',
-            topic.title+': “'+entry.uz+'” ma’nosini boshqa real vaziyat bilan tushuntiring va natijasini ayting.'
-          ];
-        }
-      }
-    }
-  }catch(e){console.warn('Speaking collocation contexts:',e)}
-
-  window.VividUniqueGameContexts={version:VERSION,sentence};
-})();
+  const api = Object.freeze({ version: VERSION, load, get, missing, mask, normalize });
+  root.VividPracticeSentences = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = { ...api, install };
+})(typeof window !== 'undefined' ? window : globalThis);

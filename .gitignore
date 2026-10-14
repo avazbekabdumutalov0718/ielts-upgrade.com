@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+practice-sentences/generated/inventory.json
+practice-sentences/generated/missing.json
+.practice-private/
+.env
+.env.*

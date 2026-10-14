@@ -7,7 +7,7 @@ const normalize=v=>String(v||'').toLowerCase().replace(/[’‘]/g,"'").replace(
 const shuffle=items=>items.map(v=>({v,r:Math.random()})).sort((a,b)=>a.r-b.r).map(x=>x.v);
 const el=(root,selector)=>root.querySelector(selector);
 const all=(root,selector)=>Array.from(root.querySelectorAll(selector));
-let current=null;
+let current=null,launchRequest=0;
 function say(value){
  if(!('speechSynthesis' in window))return;
  window.speechSynthesis.cancel();
@@ -15,41 +15,7 @@ function say(value){
  u.lang='en-US';u.rate=.88;
  window.speechSynthesis.speak(u);
 }
-function blankExample(item){
- const source=String(item?.gap||item?.e||'').trim();
- const phrase=String(item?.w||'').trim();
- if(!source||!phrase)return '';
- if(source.startsWith('Harf mashqi:'))return source;
- const escaped=phrase.replace(/[.*+?^$(){}|[\]\\]/g,'\\$&');
- const rx=new RegExp(escaped,'gi');
- if(!rx.test(source))return source.includes('________')?source:'';
- return source.replace(rx,'________');
-}
-function buildArticleContexts(entries,paragraphs){
- const sentences=[];
- for(const par of Array.isArray(paragraphs)?paragraphs:[]){
-  const text=String(par||'').replace(/\s+/g,' ').trim();
-  for(const sentence of text.split(/(?<=[.!?])\s+/)){
-   const clean=sentence.trim();
-   if(clean.length>=26&&clean.length<=245&&/[a-z].*[a-z]/i.test(clean))sentences.push(clean);
-  }
- }
- const used=new Set();
- for(const word of entries){
-  const phrase=String(word.w||'').toLowerCase();
-  const invalidPhrase=/[,;:!?]/.test(phrase)||!/[a-z]{2}/.test(phrase);
-  const own=String(word.e||'').trim();
-  const candidates=(invalidPhrase?[]:[...sentences,own])
-     .filter(x=>x.length>=26&&x.length<=245&&x.toLowerCase().includes(phrase))
-     .sort((a,b)=>a.length-b.length);
-  let chosen='';
-  for(const example of candidates){
-   const key=example.toLowerCase().replace(/\s+/g,' ').trim();
-   if(!used.has(key)){used.add(key);chosen=example;break;}
-  }
-  word.gap=chosen?chosen:'Harf mashqi: '+word.w.split(/\s+/).map(p=>p.length<=2?p[0]+'_'+p.length:'('+p.length+') '+p[0]+'_'+p.slice(-1)).join('  ');
- }
-}
+function blankExample(item){return window.VividPracticeSentences?.get(item,'gap')?.masked||''}
 function hint(item){
  return item.u||blankExample(item)||('Inglizcha ibora: '+item.w.charAt(0)+'…');
 }
@@ -57,6 +23,7 @@ function stopTimer(){
  if(current&&current.timer){clearInterval(current.timer);current.timer=null;}
 }
 function dispose(){
+ launchRequest++;
  stopTimer();
  if('speechSynthesis' in window)window.speechSynthesis.cancel();
  if(current){
@@ -71,8 +38,9 @@ function dispose(){
  }
  current=null;
 }
-function launch(options){
+async function launch(options){
  dispose();
+ const request=launchRequest;
  const section=options.section;
  if(!section||!section.isConnected)return;
  const rows=(options.entries||[]).filter(x=>x&&String(x.w||'').trim());
@@ -82,8 +50,17 @@ function launch(options){
  if(!entries.length){const slot=el(section,'#ar-game-play');if(slot){slot.hidden=false;slot.textContent='Bu maqolada hozircha collocation mavjud emas.';}return;}
  const mode=Number(options.mode);
  if(!Number.isInteger(mode)||mode<0||mode>6)return;
- buildArticleContexts(entries,options.paragraphs);
- const old=options.getState?.()||{};
+ try{await window.VividPracticeSentences.load()}catch{
+  const slot=el(section,'#ar-game-play');if(slot){slot.hidden=false;slot.textContent='Mashq gaplari yuklanmadi. Qayta urinib ko‘ring.';}return;
+ }
+ if(request!==launchRequest||!section.isConnected)return;
+ if(mode===3||mode===6){
+  const missing=window.VividPracticeSentences.missing(entries);
+  if(missing.length){const slot=el(section,'#ar-game-play');if(slot){slot.hidden=false;slot.textContent=missing.length+' ta ibora uchun yangi gaplar hali tayyor emas.';}return;}
+ }
+
+ const stored=options.getState?.()||{};
+ const old=stored.contextVersion===window.VividPracticeSentences.version?stored:{};
  const validIds=entries.map(x=>x.id);
  const done=new Set(Array.isArray(old.done)?old.done.filter(x=>validIds.includes(x)):[]);
  const fresh=done.size>=entries.length;
@@ -111,7 +88,7 @@ function launch(options){
  show(s);
 }
 function save(s){
- const obj={done:Array.from(s.done),correct:s.correct,best:s.best,attempts:s.attempts};
+ const obj={contextVersion:window.VividPracticeSentences.version,done:Array.from(s.done),correct:s.correct,best:s.best,attempts:s.attempts};
  s.setState?.(obj);
 }
 function record(s,item,ok){
@@ -156,7 +133,7 @@ function showFlash(s){
  const draw=()=>{
   const side=s.flipped;
   const content=side?(word.u||'Bu iboraning tasdiqlangan tarjimasi hali kiritilmagan') : word.w;
-  const secondary=side?'Bu kartada faqat ma’no beriladi; gapli mashqlar boshqa o‘yinlarda alohida bo‘ladi.':'🔊 Talaffuz tugmasini bosing';
+  const secondary=side?(window.VividPracticeSentences?.get(word,'gap')?.sentence||''):'🔊 Talaffuz tugmasini bosing';
   const box=roundBox(s,
    '<div class="ar-flash-layout">'+
    '<button type="button" id="ar-flash-card" class="ar-flash-card'+(side?' is-flipped':'')+'" aria-label="Kartani aylantirish">'+
@@ -197,7 +174,8 @@ function showChoice(s){
   roundBox(s,'<div class="ar-question-card"><p class="ar-question-help">Ushbu mashq uchun to‘rtta turli collocation kerak.</p></div>');
   return;
  }
- const prompt=canMeanings?word.w:hasReverseMeaning?word.u:morphologyClue(word,s.mode);
+ const context=window.VividPracticeSentences?.get(word,'gap')?.sentence;
+ const prompt=canMeanings?(context?word.w+' — '+context:word.w):hasReverseMeaning?word.u:morphologyClue(word,s.mode);
  const label=canMeanings?'Ibora ma’nosini to‘rtta tarjimadan toping.':hasReverseMeaning?'O‘zbekcha ma’noga mos inglizcha iborani tez tanlang.':'To‘rtta variantdan berilgan imlo belgisiga mos iborani toping.';
  const answerText=canMeanings?word.u:word.w;
  const choices=options.map((o,i)=>'<button type="button" class="ar-choice-option" data-choice="'+i+'">'+escapeHtml(canMeanings?o.u:o.w)+'</button>').join('');
@@ -259,8 +237,8 @@ function showPairs(s){
 function showInput(s){
  s.locked=false;
  const word=remaining(s)[0];
- const prompt=s.mode===3?(blankExample(word)||('Harf mashqi: '+morphologyClue(word,3))):(word.u?('Ma’nosi: '+word.u+' · Bosh harflar: '+morphologyClue(word,3)):morphologyClue(word,3));
- const caption=s.mode===3?'Maqoladagi gapni to‘ldiring':'Collocation’ni ingliz tilida yozing';
+ const prompt=s.mode===3?blankExample(word):(word.u?('Ma’nosi: '+word.u+' · Bosh harflar: '+morphologyClue(word,3)):morphologyClue(word,3));
+ const caption=s.mode===3?'Yangi gapdagi bo‘shliqni to‘ldiring':'Collocation’ni ingliz tilida yozing';
  const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">'+(s.mode===3?'✎ Fill the gap':'⌨ Typing race')+'</div><p class="ar-question-help">'+caption+'</p><div class="ar-question-text">'+escapeHtml(prompt)+'</div><form id="ar-game-form" class="ar-type-form"><input id="ar-game-input" required autocomplete="off" spellcheck="false" placeholder="Inglizcha iborani yozing" aria-label="Javob"><button type="submit">Tekshirish</button></form><div class="ar-feedback" id="ar-play-feedback" aria-live="polite"></div><button type="button" class="ar-next-question" id="ar-next-question" hidden>Keyingisi →</button></div>');
  el(box,'#ar-game-form').onsubmit=ev=>{
   ev.preventDefault();
@@ -279,17 +257,16 @@ function showInput(s){
 function showBuilder(s){
  s.locked=false;
  const word=remaining(s)[0];
- const phraseParts=word.w.split(/\s+/).filter(Boolean);
- const byLetters=phraseParts.length===1;
- const tokens=byLetters?Array.from(word.w):phraseParts;
+ const sentence=window.VividPracticeSentences.get(word,'builder').sentence;
+ const tokens=sentence.split(/\s+/);
  const scrambled=shuffle(tokens.map((t,i)=>({t,i})));
- const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">▤ Sentence builder</div><p class="ar-question-help">So‘zlarni to‘g‘ri tartibda joylashtirib, collocation hosil qiling.</p>'+
-  '<div class="ar-question-text">'+escapeHtml(word.u||(byLetters?'Harflarni to‘g‘ri tartibga keltiring.':('Ibora '+tokens.length+' ta so‘zdan tuzilgan. So‘zlarni tartib bilan joylashtiring.')))+'</div><div class="ar-builder-answer" id="ar-builder-answer">So‘zlarni tanlang...</div>'+
+ const box=roundBox(s,'<div class="ar-question-card"><div class="ar-question-label">▤ Sentence builder</div><p class="ar-question-help">So‘zlarni to‘g‘ri tartibda joylashtirib, to‘liq gap hosil qiling.</p>'+
+  '<div class="ar-question-text">'+escapeHtml(word.u||word.w)+'</div><div class="ar-builder-answer" id="ar-builder-answer">So‘zlarni tanlang...</div>'+
   '<div class="ar-builder-bank">'+scrambled.map(x=>'<button type="button" data-token="'+x.i+'">'+escapeHtml(x.t)+'</button>').join('')+'</div>'+
   '<div class="ar-builder-controls"><button type="button" id="ar-builder-clear">↺ Boshidan</button><button type="button" id="ar-builder-check">Tekshirish</button></div><div class="ar-feedback" id="ar-play-feedback" aria-live="polite"></div><button type="button" class="ar-next-question" id="ar-next-question" hidden>Keyingisi →</button></div>');
  let selected=[];
  function update(){
-  el(box,'#ar-builder-answer').textContent=selected.length?selected.map(i=>tokens[i]).join(byLetters?'':' '):(byLetters?'Harflarni tanlang...':'So‘zlarni tanlang...');
+  el(box,'#ar-builder-answer').textContent=selected.length?selected.map(i=>tokens[i]).join(' '):'So‘zlarni tanlang...';
   all(box,'[data-token]').forEach(b=>b.disabled=selected.includes(Number(b.dataset.token))||s.locked);
  }
  all(box,'[data-token]').forEach(b=>b.onclick=()=>{selected.push(Number(b.dataset.token));update()});
@@ -297,9 +274,9 @@ function showBuilder(s){
  el(box,'#ar-builder-check').onclick=()=>{
   if(s.locked||selected.length!==tokens.length){el(box,'#ar-play-feedback').textContent='Avval barcha so‘zlarni joylashtiring.';return}
   s.locked=true;
-  const ok=selected.map(i=>tokens[i]).join(byLetters?'':' ')===tokens.join(byLetters?'':' ');
+  const ok=selected.map(i=>tokens[i]).join(' ')===tokens.join(' ');
   record(s,word,ok);
-  el(box,'#ar-play-feedback').textContent=ok?'✓ To‘g‘ri!':'✗ To‘g‘ri tartib: '+word.w;
+  el(box,'#ar-play-feedback').textContent=ok?'✓ To‘g‘ri!':'✗ To‘g‘ri tartib: '+sentence;
   el(box,'#ar-builder-check').disabled=true;el(box,'#ar-builder-clear').disabled=true;
   const next=el(box,'#ar-next-question');next.hidden=false;next.onclick=()=>{s.locked=false;show(s)};
   update();
@@ -314,7 +291,7 @@ function finish(s){
  const total=s.entries.length;
  box.innerHTML='<div class="ar-game-screen ar-game-finish"><div class="ar-play-eyebrow">VIVID IELTS / ARTICLES / NATIJA</div><div class="ar-result-icon">🏆</div><h2>'+names[s.mode]+' — yakunlandi</h2><p>'+s.correct+' / '+total+' ta collocation to‘g‘ri</p><div class="ar-result-score">'+Math.round(s.correct/total*100)+'%</div><div class="ar-result-actions"><button type="button" id="ar-game-again">↺ Qayta o‘ynash</button><button type="button" id="ar-game-to-list">← O‘yinlarga qaytish</button></div></div>';
  el(box,'#ar-game-again').onclick=()=>{
-  s.setState?.({done:[],correct:0,best:s.best,attempts:s.attempts});
+  s.setState?.({contextVersion:window.VividPracticeSentences.version,done:[],correct:0,best:s.best,attempts:s.attempts});
   launch({section:s.section,mode:s.mode,entries:s.entries,getState:s.getState,setState:s.setState});
  };
  el(box,'#ar-game-to-list').onclick=dispose;

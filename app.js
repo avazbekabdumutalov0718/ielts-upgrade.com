@@ -322,7 +322,7 @@ function speak(){const a=state.game&&state.game.mode==='flash'?state.game.items[
 function scopeOptions(){return `<option value="all">Barcha so‘zlar (${fmt(words.length)})</option><option value="speaking">Speaking (${fmt(words.filter(w=>w.s).length)})</option>${topics.map((t,i)=>`<option value="topic:${i}">${esc(t)} (${fmt(words.filter(w=>w.t===t).length)})</option>`).join('')}`}
 function gamePool(){if(state.scope==='speaking')return words.filter(w=>w.s);if(state.scope.startsWith('topic:'))return words.filter(w=>w.t===topics[Number(state.scope.split(':')[1])]);return words}
 function studySection(){return state.view==='topics'?`topics:${state.topic}`:state.view==='custom'?`custom:${state.customPackId}`:state.view+':' }
-function sessionKey(mode,kind='full',section='',packIndex=0,variant='game'){return kind==='pack'?`pack:${section}:${packIndex}:${mode==='mcq'?(variant==='study'?'packquiz':'quiz'):mode}`:`full:${mode}:${state.scope}`}
+function sessionKey(mode,kind='full',section='',packIndex=0,variant='game'){const suffix=['gap','sentence'].includes(mode)?':original-practice-v1':'';return (kind==='pack'?`pack:${section}:${packIndex}:${mode==='mcq'?(variant==='study'?'packquiz':'quiz'):mode}`:`full:${mode}:${state.scope}`)+suffix}
 function saveGame(){const g=state.game;if(!g)return;if(g.mode==='typing'&&g.startedAt){g.elapsedMs+=Date.now()-g.startedAt;g.startedAt=0}sessions[g.key]={mode:g.mode,kind:g.kind,scope:g.scope,label:g.label,order:g.items.map(w=>w.id),idx:g.idx,correct:g.correct,batchStart:g.batchStart||0,batchEnds:g.batchEnds||[],matchedIds:[...g.matched],elapsedMs:g.elapsedMs||0,updatedAt:Date.now()};saveSessions()}
 function pairOrder(items){const pending=shuffle(items),out=[],batchEnds=[];while(pending.length){const seen=new Set(),batch=[];for(let i=0;i<pending.length&&batch.length<6;){const k=norm(pending[i].u);if(seen.has(k)){i++;continue}seen.add(k);batch.push(pending.splice(i,1)[0])}out.push(...batch);batchEnds.push(out.length)}return {items:out,batchEnds}}
 // Grammar extension begin
@@ -1000,7 +1000,7 @@ function maxSpeakingGameSanitize(value){
  }
  return cleaned;
 }
-function maxSpeakingGameKey(topic,mode){return `${topic.id}:${mode}`}
+function maxSpeakingGameKey(topic,mode){return `${topic.id}:${mode}:${window.VividPracticeSentences.version}`}
 function maxSpeakingGameSave(){
  const g=maxSpeakingGame;if(!g)return;
  maxSpeakingGames.sessions[g.key]={order:g.items.map(e=>e.id),idx:g.idx,correct:g.correct,batchStart:g.batchStart,ends:g.ends,matched:[...g.matched],updatedAt:Date.now()};
@@ -1018,8 +1018,9 @@ function maxSpeakingPairOrder(entries){
  return {items,ends};
 }
 function maxSpeakingOpenGames(){maxSpeakingScreen='games';maxSpeakingQuery='';maxSpeakingPage=0;renderMaxSpeaking();scrollPageTop()}
-function maxSpeakingStart(mode){
+async function maxSpeakingStart(mode){
  if(!maxSpeakingModes.some(x=>x[0]===mode))return;
+ if(!await preparePractice(maxSpeakingGameEntries(maxSpeakingBank.topics[maxSpeakingTopic]),mode))return;
  const topic=maxSpeakingBank.topics[maxSpeakingTopic],key=maxSpeakingGameKey(topic,mode),saved=maxSpeakingGames.sessions[key];
  const valid=saved&&Array.isArray(saved.order)&&saved.order.length===30&&new Set(saved.order).size===30&&saved.order.every(id=>topic.entries.some(e=>e.id===id));
  const prepared=mode==='pairs'?maxSpeakingPairOrder(maxSpeakingGameEntries(topic)):{items:shuffle(maxSpeakingGameEntries(topic)),ends:[]};
@@ -1049,15 +1050,7 @@ function maxSpeakingGameChoices(entry,reverse){
  return `<div class="choices">${g.choices.map((e,i)=>`<button type="button" class="choice" data-action="max-speaking-choice" data-index="${i}">${esc(reverse?e.term:e.uz)}</button>`).join('')}</div>`;
 }
 function maxSpeakingPracticeSentence(e,topic,variant=0){
- const own=Array.isArray(e.examples)?e.examples.map(x=>String(x||'').replace(/\s+/g,' ').trim()).filter(Boolean):[];
- if(own.length)return own[Math.abs(Number(variant)||0)%own.length];
- const phrase=String(e.term||'').trim(),topicName=(topic?.title||e.topic||'everyday life').replace(/&/g,'and');
- const seed=String(e.id||phrase).split('').reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,11);
- const people=['My classmate','A university student','One of my neighbours','A colleague','A close friend','A local resident','A young professional','A volunteer','A team leader','A family member','A traveller','A teacher'];
- const moments=['after a difficult week','during a group project','while preparing for an exam','when plans changed unexpectedly','during a weekend activity','after receiving useful advice','while making an important decision','during a busy morning','when solving a practical problem','while discussing a personal goal','after comparing several options','during a community event'];
- const results=['and it made the next step much clearer','which helped the situation improve','and the experience taught a useful lesson','before deciding how to continue','which changed the outcome in a positive way','and that choice saved both time and effort','which made the example easier to explain','and the result became noticeable quite quickly','before the group reached a final decision','which gave the story a clear conclusion'];
- const person=people[seed%people.length],moment=moments[(seed>>>4)%moments.length],result=results[(seed>>>9)%results.length];
- return person+' tried to '+phrase+' '+moment+' in a situation related to '+topicName+', '+result+'.';
+ return window.VividPracticeSentences?.get(e,variant===1||variant===3?'builder':'gap')?.sentence||'';
 }
 function maxSpeakingGameBody(){
  const g=maxSpeakingGame,e=g.items[g.idx],mode=g.mode,reverse=mode==='mcq'&&g.idx%2===1;
@@ -1070,7 +1063,7 @@ function maxSpeakingGameBody(){
   return `<div class="quiz-prompt">Inglizcha ibora va o‘zbekcha tarjimani juftlang · ${Math.floor(start/6)+1} / ${g.ends.length} guruh</div><div class="pair-grid"><div class="pair-col">${column(g.left,'left')}</div><div class="pair-col">${column(g.right,'right')}</div></div>`;
  }
  if(mode==='gap'||mode==='typing'){
-  const sample=maxSpeakingPracticeSentence(e,g.topic,2),re=new RegExp(e.term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'),masked=sample.replace(re,'_____');
+  const masked=window.VividPracticeSentences?.get(e,'gap')?.masked||'';
   return `<div class="quiz-prompt">${mode==='gap'?'Misoldagi iborani to‘ldiring':'Tarjimaga qarab inglizcha iborani yozing'}</div><h3 class="quiz-word">${esc(mode==='gap'?masked:e.uz)}</h3>${mode==='gap'?`<p class="quiz-prompt">Ma’nosi: ${esc(e.uz)}</p>`:''}<input id="maxGameAnswer" class="game-input" type="text" autocomplete="off" spellcheck="false" aria-label="Inglizcha ibora" placeholder="Inglizcha iborani yozing"><div class="center-actions"><button type="button" class="primary-btn" data-action="max-speaking-check">Tekshirish</button><button type="button" class="secondary-btn" data-action="max-speaking-skip">O‘tkazib yuborish</button></div><div id="maxGameFeedback" class="feedback" role="status"></div>`;
  }
  if(mode==='sentence'){
@@ -1125,7 +1118,7 @@ function maxSpeakingGameAction(action,button){
  }
  if(action==='max-speaking-add'||action==='max-speaking-remove'){const index=Number(button.dataset.index);if(action==='max-speaking-add'&&g.available[index])g.picked.push(g.available.splice(index,1)[0]);if(action==='max-speaking-remove'&&g.picked[index])g.available.push(g.picked.splice(index,1)[0]);renderMaxSpeaking();return true}
  if(action==='max-speaking-check'){
-  if(g.mode==='sentence'){if(!g.picked.length){toast('Avval gapni tuzing.');return true}const right=g.picked.map(x=>x.id).every((id,i)=>id===i)&&g.picked.length===(g.sentenceSample||maxSpeakingPracticeSentence(e,g.topic,3)).trim().split(/\s+/).length;maxSpeakingGameNext(right,right?'To‘g‘ri!':`Model gap: ${g.sentenceSample||maxSpeakingPracticeSentence(e,g.topic,3)}`,1600);return true}
+  if(g.mode==='sentence'){if(!g.picked.length){toast('Avval gapni tuzing.');return true}const right=norm(g.picked.map(x=>x.text).join(' '))===norm(g.sentenceSample||maxSpeakingPracticeSentence(e,g.topic,3));maxSpeakingGameNext(right,right?'To‘g‘ri!':`Model gap: ${g.sentenceSample||maxSpeakingPracticeSentence(e,g.topic,3)}`,1600);return true}
   const value=document.getElementById('maxGameAnswer')?.value.trim();if(!value){toast('Avval iborani yozing.');return true}maxSpeakingGameNext(norm(value)===norm(e.term),norm(value)===norm(e.term)?'To‘g‘ri!':`To‘g‘ri javob: ${e.term}`,1200);return true;
  }
  if(action==='max-speaking-skip'){maxSpeakingGameNext(false,`To‘g‘ri javob: ${g.mode==='sentence'?(g.sentenceSample||maxSpeakingPracticeSentence(e,g.topic,3)):e.term}`,1300);return true}
@@ -1514,74 +1507,47 @@ function openPackGames(index){const list=activeList().slice(index*30,index*30+30
 function renderPackGames(){const ctx=state.packContext;if(!ctx?.ids?.length){state.view='all';renderStudy();return}const count=ctx.ids.length,isWriting=ctx.origin==='writing',title=isWriting?`Writing Collocations · ${ctx.label||'Topic'}`:`To‘plam ${String(ctx.number).padStart(2,'0')} · 7 ta o‘yin`,desc=isWriting?`Shu topicdagi ${count} ta collocationni saytning mavjud 7 o‘yinida mashq qiling.`:`Shu to‘plamdagi ${count} ta so‘zning barchasini istalgan o‘yinda mashq qiling.`;root.innerHTML=`<div class="page-back-row"><button type="button" class="page-back" data-action="back-one">← ${isWriting?'Writing Boosterga':'To‘plamga'} qaytish</button><button type="button" class="page-close" data-action="exit-game" aria-label="Chiqish">✕ <span>Chiqish</span></button></div>`+heading(title,desc,`${count} ta karta`)+`<div class="pack-game-intro">${isWriting?'Flashcardsdan keyin aynan shu 15 ta collocationni 7 xil usulda mustahkamlang.':'Quizdan tashqari shu so‘zlarni 7 xil usulda o‘rganing.'} Har bir o‘yinning natijasi alohida saqlanadi.</div><div class="games-grid">${games.map(g=>{const ss=sessions[sessionKey(g[0],'pack',ctx.section,ctx.packIndex,'packgames')];return `<button type="button" class="game-tile ${g[4]}" data-action="start-pack-game" data-mode="${g[0]}"><span class="game-icon" aria-hidden="true">${g[3]}</span><strong>${g[1]}</strong><small>${g[2]}</small><span class="game-count">${ss?`Davom ettirish: ${fmt(ss.idx)} / ${fmt(ss.order.length)}`:`${count} ta so‘z`}</span></button>`}).join('')}</div>`}
 function startRushTimer(){const g=state.game;if(!g||g.mode!=='rush')return;g.paused=false;g.time=60;clearInterval(state.timer);state.timer=setInterval(()=>{if(state.game!==g)return;g.time--;const el=$('#gameTime');if(el)el.textContent=g.time+' s';if(g.time<=0){clearInterval(state.timer);state.timer=null;if(!g.answered)pauseRush()}},1000)}
 function pauseRush(){const g=state.game;if(!g||g.mode!=='rush')return;clearInterval(state.timer);state.timer=null;g.paused=true;g.time=0;saveGame();renderGame()}
-function startGame(mode,provided=null,meta={}){clearInterval(state.timer);if(state.game)saveGame();const kind=provided?'pack':'full',key=meta.key||sessionKey(mode,kind,meta.section,meta.packIndex,meta.origin),candidate=sessions[key],saved=candidate&&(!provided||candidate.order.length===provided.length&&provided.every(w=>candidate.order.includes(w.id)))?candidate:null;let items=saved?.order?.map(id=>dailyWordById(id)).filter(Boolean),batchEnds=saved?.batchEnds||[];if(!items?.length){if(mode==='pairs'){const prepared=pairOrder(provided||gamePool());items=prepared.items;batchEnds=prepared.batchEnds}else items=shuffle(provided||gamePool())}if(!items.length){toast('Bu bo‘limda so‘z yo‘q.');return}const idx=saved&&saved.order.length===items.length?Math.min(saved.idx,items.length-1):0;pushPage('game');state.game={mode,kind,origin:meta.origin||'games',scope:state.scope,key,label:meta.label||saved?.label||'',items,idx,correct:saved?.correct||0,answered:false,flipped:false,time:60,paused:false,tokens:[],selected:null,matched:new Set(saved?.matchedIds||[]),batchStart:saved?.batchStart||0,batchEnds,elapsedMs:saved?.elapsedMs||0,startedAt:0,round:Math.random()};state.lastGameOrigin=state.game.origin;state.view='games';updateNav();saveGame();if(mode==='rush')startRushTimer();renderGame();scrollPageTop()}
+async function startGame(mode,provided=null,meta={}){if(!await preparePractice(provided||gamePool(),mode))return;clearInterval(state.timer);if(state.game)saveGame();const kind=provided?'pack':'full',key=meta.key||sessionKey(mode,kind,meta.section,meta.packIndex,meta.origin),candidate=sessions[key],saved=candidate&&(!provided||candidate.order.length===provided.length&&provided.every(w=>candidate.order.includes(w.id)))?candidate:null;let items=saved?.order?.map(id=>dailyWordById(id)).filter(Boolean),batchEnds=saved?.batchEnds||[];if(!items?.length){if(mode==='pairs'){const prepared=pairOrder(provided||gamePool());items=prepared.items;batchEnds=prepared.batchEnds}else items=shuffle(provided||gamePool())}if(!items.length){toast('Bu bo‘limda so‘z yo‘q.');return}const idx=saved&&saved.order.length===items.length?Math.min(saved.idx,items.length-1):0;pushPage('game');state.game={mode,kind,origin:meta.origin||'games',scope:state.scope,key,label:meta.label||saved?.label||'',items,idx,correct:saved?.correct||0,answered:false,flipped:false,time:60,paused:false,tokens:[],selected:null,matched:new Set(saved?.matchedIds||[]),batchStart:saved?.batchStart||0,batchEnds,elapsedMs:saved?.elapsedMs||0,startedAt:0,round:Math.random()};state.lastGameOrigin=state.game.origin;state.view='games';updateNav();saveGame();if(mode==='rush')startRushTimer();renderGame();scrollPageTop()}
 function gameBar(g){const title=g.kind==='pack'?g.label:games.find(x=>x[0]===g.mode)?.[1]||'O‘yin';return `<div class="game-top"><div><div class="overline">VIVID IELTS / ${g.kind==='pack'?(g.origin==='study'?'TO‘PLAM QUIZI':g.origin==='daily'?'KUNLIK O‘YIN':g.origin==='mockanalysis'?'MOCK IBORALARI':g.origin==='readingbooster'?'READING WORDS':'TO‘PLAM O‘YINI'):'O‘YIN'}</div><h2>${esc(title)}</h2></div><div class="game-head-actions"><small>${g.mode==='rush'?`<b id="gameTime">${g.time} s</b> · `:g.mode==='typing'?`<b id="gameTime">${((g.elapsedMs+(g.startedAt?Date.now()-g.startedAt:0))/1000).toFixed(1)} s</b> · `:''}${fmt(g.correct)} to‘g‘ri · ${fmt(Math.min(g.idx+1,g.items.length))} / ${fmt(g.items.length)}</small><button type="button" class="small-button" data-action="back-one">← Orqaga</button><button type="button" class="game-exit" data-action="exit-game" aria-label="O‘yindan chiqish">✕ <span>Chiqish</span></button></div></div><div class="game-progress"><span style="width:${100*g.idx/g.items.length}%"></span></div>`}
 function mcqChoices(w,reverse=false){const g=state.game;if(!g.options||g.optionFor!==w.id||g.reverse!==reverse){const pool=g.kind==='pack'?(g.origin==='readingbooster'&&g.items.length<4?[...g.items,...shuffle(words).slice(0,80)]:g.items):gamePool(),used=new Set([norm(reverse?w.w:w.u)]),choices=[];for(const x of shuffle(pool)){const k=norm(reverse?x.w:x.u);if(x.id!==w.id&&!used.has(k)){choices.push(x);used.add(k)}if(choices.length===3)break}g.options=shuffle([w,...choices]);g.optionFor=w.id;g.reverse=reverse}return g.options.map((x,i)=>`<button class="choice" type="button" data-action="answer-choice" data-index="${i}">${esc(reverse?x.w:x.u)}</button>`).join('')}
 function practiceExampleFor(w,variant=0){
- if(w.sampleAnswerSource)return window.SpeakingTopicStudy.exampleFor(w,variant);
- const own=String(w.e||'').replace(/\s+/g,' ').trim();
- // Every vocabulary/collocation card has its own example. Games must use it instead of generic repeated frames.
- if(own.length>=6)return own;
- const term=String(w.w||'').trim();
- const meaning=String(w.u||w.d||'the target idea').replace(/\s+/g,' ').trim();
- const topic=String(w.t||'everyday English').replace(/^Speaking\s*·\s*/i,'').replace(/^Writing\s*·\s*/i,'').trim();
- const seed=gameSeed(w,'fallback-example-'+variant);
- const subjects=['A student','A teacher','A traveller','A researcher','A neighbour','A colleague','A parent','A volunteer','A shop owner','A team member','A local resident','A university applicant','A young professional','A commuter','A classmate','A project leader'];
- const settings=['during a busy weekday','after an unexpected change','while preparing for an important task','during a conversation with friends','when making a difficult decision','while working on a group project','during a weekend activity','after receiving useful advice','while adapting to a new situation','during an ordinary day','when solving a practical problem','while discussing a real example','during a community event','while planning the next step','after comparing several options','when explaining a personal experience'];
- const endings=['and the result was immediately noticeable','which made the situation easier to understand','before deciding what to do next','and this changed the final outcome','which helped everyone respond more clearly','so the idea became easier to remember','and the experience provided a useful lesson','which gave the discussion a more precise focus','before the group reached a final decision','and that detail became important later'];
- const subject=subjects[seed%subjects.length],setting=settings[(seed>>>5)%settings.length],ending=endings[(seed>>>11)%endings.length];
- return subject+' used “'+term+'” '+setting+' to express “'+meaning+'”, '+ending+'.';
+ return window.VividPracticeSentences?.get(w,variant>=20?'builder':'gap')?.sentence||'';
 }
 function exampleFor(w){return practiceExampleFor(w,0)}
 function gameSeed(w,salt=''){return (String(w.id??w.w)+salt).split('').reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,11)}
 function naturalExampleFor(w,variant=0){return practiceExampleFor(w,variant)}
-function maskTermInSentence(sentence,term){
- const escaped=String(term||'').replace(/[.*+?^$\{\}()|[\]\\]/g,'\\$&');
- const re=new RegExp(escaped,'i');
- if(re.test(sentence))return sentence.replace(re,'_____');
- const parts=String(term||'').trim().split(/\s+/);
- if(parts.length>1){
-  const flexible=new RegExp(parts.map(x=>x.replace(/[.*+?^$\{\}()|[\]\\]/g,'\\$&')).join('\\s+'),'i');
-  if(flexible.test(sentence))return sentence.replace(flexible,'_____');
+function maskTermInSentence(sentence,term){return window.VividPracticeSentences?.mask(sentence,term)||''}
+function gapText(w){return window.VividPracticeSentences?.get(w,'gap')?.masked||''}
+let practiceRequest=0;
+async function preparePractice(items,mode){
+ const request=++practiceRequest,view=state.view,selection=[state.scope,state.pack,maxSpeakingTopic,state.packContext].map(x=>JSON.stringify(x)).join("|");
+ try{await window.VividPracticeSentences.load()}catch{toast('Mashq gaplari yuklanmadi. Qayta urinib ko‘ring.');return false}
+ if(request!==practiceRequest||view!==state.view||selection!==[state.scope,state.pack,maxSpeakingTopic,state.packContext].map(x=>JSON.stringify(x)).join("|"))return false;
+ if(['gap','sentence'].includes(mode)){
+  const missing=window.VividPracticeSentences.missing(items);
+  if(missing.length){toast(missing.length+' ta ibora uchun yangi gaplar hali tayyor emas.');return false}
  }
- return '';
+ return true;
 }
-function uniqueGapFallback(w,variant=0){
- const term=String(w.w||'').trim(),meaning=String(w.u||w.d||'target meaning').replace(/\s+/g,' ').trim(),topic=String(w.t||'English').replace(/^Speaking\s*·\s*/i,'').replace(/^Writing\s*·\s*/i,'').trim();
- const seed=gameSeed(w,'gap-fallback-'+variant);
- const frames=[
-  (t,m,p)=>'In a '+p+' discussion, the expression “'+t+'” was used to communicate the idea “'+m+'”.',
-  (t,m,p)=>'During a '+p+' lesson, the phrase “'+t+'” appeared in a sentence about “'+m+'”.',
-  (t,m,p)=>'A learner chose “'+t+'” in a '+p+' example because it matched the meaning “'+m+'”.',
-  (t,m,p)=>'The '+p+' example used “'+t+'” to make the meaning “'+m+'” precise.',
-  (t,m,p)=>'While reviewing '+p+', the class used “'+t+'” for the idea “'+m+'”.',
-  (t,m,p)=>'In one '+p+' scenario, “'+t+'” was the clearest way to express “'+m+'”.',
-  (t,m,p)=>'The speaker included “'+t+'” in a '+p+' answer to convey “'+m+'”.',
-  (t,m,p)=>'For a practical '+p+' example, “'+t+'” represented the meaning “'+m+'”.',
-  (t,m,p)=>'A short '+p+' response used “'+t+'” when the intended idea was “'+m+'”.',
-  (t,m,p)=>'In a real '+p+' context, “'+t+'” helped express “'+m+'” accurately.',
-  (t,m,p)=>'The phrase “'+t+'” appeared in a '+p+' example that illustrated “'+m+'”.',
-  (t,m,p)=>'While practising '+p+', a learner used “'+t+'” to describe “'+m+'”.'
- ];
- return frames[seed%frames.length](term,meaning,topic);
+function gameTypingPrompt(w){
+ const gap=gapText(w);
+ return gap?{label:'Gapdagi yashirilgan so‘z yoki iborani yozing',text:gap+' · '+w.u}:
+ {label:'O‘zbekcha ma’noga qarab inglizchasini yozing',text:w.u};
 }
-function gapText(w,variant=0){
- const own=naturalExampleFor(w,variant);
- const masked=maskTermInSentence(own,w.w);
- if(masked)return masked;
- const fallback=uniqueGapFallback(w,variant);
- return maskTermInSentence(fallback,w.w)||fallback;
+function gameChoicePrompt(w,mode,index){
+ const sentence=naturalExampleFor(w,0),seed=(gameSeed(w,mode)+index)%4;
+ if(seed===1)return {reverse:true,label:'Ma’noga mos inglizcha variantni tanlang',text:w.u};
+ if(sentence)return {reverse:false,label:'Gapdagi ma’noga mos tarjimani tanlang',text:w.w+' — '+sentence};
+ return {reverse:false,label:'So‘z yoki iboraning ma’nosini tanlang',text:w.w};
 }
-function gameTypingPrompt(w){if(w.sampleAnswerSource)return {label:'Sample answerdagi iborani yozing',text:gapText(w,14)+' · '+w.u};const seed=gameSeed(w,'typing')%4;if(seed===0)return {label:'O‘zbekcha ma’noga qarab inglizchasini yozing',text:w.u};if(seed===1&&w.d&& !/IELTS (Writing collocation|vocabulary)/i.test(w.d))return {label:'Ta’rifga mos so‘z yoki iborani yozing',text:w.d};if(seed===2){const first=String(w.w).split(/\s+/).map(x=>x.charAt(0).toUpperCase()+'…').join(' ');return {label:'Ma’no + harf yordamidan foydalanib yozing',text:`${w.u} · ${first}`}}return {label:'Gapdagi yashirilgan iborani yozing',text:gapText(w,14)}}
-function gameChoicePrompt(w,mode,index){if(w.sampleAnswerSource)return index%2?{reverse:true,label:'Shu sample answerdagi qaysi ibora bu ma’noni bildiradi?',text:w.u}:{reverse:false,label:'Sample answerda ishlatilgan iboraning ma’nosi qaysi?',text:w.w+' — '+naturalExampleFor(w,index)};const seed=(gameSeed(w,mode)+index)%4;if(seed===0)return {reverse:false,label:'Bu so‘z yoki iboraning o‘zbekcha ma’nosi qaysi?',text:w.w};if(seed===1)return {reverse:true,label:'Qaysi inglizcha so‘z yoki ibora mos keladi?',text:w.u};if(seed===2)return {reverse:false,label:'Bu gapda ishlatilgan iboraning ma’nosini toping',text:naturalExampleFor(w,18)};return {reverse:true,label:'Ma’noga mos inglizcha variantni tanlang',text:(w.d&&w.d.length>8&&!/IELTS (Writing collocation|vocabulary)/i.test(w.d))?w.d:w.u}}
 function renderGame(){const g=state.game;if(!g)return;if(g.mode==='rush'&&g.paused){root.innerHTML=heading('Word Rush','Barcha so‘zlar ketma-ket chiqadi. Har safar 60 soniyalik bosqichni davom ettiring.')+`<section class="game-stage">${gameBar(g)}<div class="sprint-pause"><strong>60 soniya tugadi</strong><p>${fmt(g.idx)} / ${fmt(g.items.length)} ta so‘z ko‘rildi. Keyingi bosqich aynan shu joydan davom etadi.</p><button type="button" class="primary-btn" data-action="resume-rush">Keyingi 60 soniya →</button></div></section>`;return}const w=g.items[g.idx];
  let body='';
- if(g.mode==='flash'){body=`<div class="game-card">${cardMarkup(w,g.flipped)}</div><div class="card-tools"><button type="button" class="tool-btn speaker" data-action="speak">🔊 Talaffuz</button><span>${g.idx+1} / ${g.items.length}</span></div><div class="card-actions"><button class="action-btn learn" type="button" data-action="flash-grade" data-value="learning">↺ Hali o‘rganaman</button><button class="action-btn flip" type="button" data-action="flip">Aylantirish</button><button class="action-btn know" type="button" data-action="flash-grade" data-value="known">Bilaman ✓</button></div>`}
+ if(g.mode==='flash'){body=`<div class="game-card">${cardMarkup({...w,e:practiceExampleFor(w,0)},g.flipped)}</div><div class="card-tools"><button type="button" class="tool-btn speaker" data-action="speak">🔊 Talaffuz</button><span>${g.idx+1} / ${g.items.length}</span></div><div class="card-actions"><button class="action-btn learn" type="button" data-action="flash-grade" data-value="learning">↺ Hali o‘rganaman</button><button class="action-btn flip" type="button" data-action="flip">Aylantirish</button><button class="action-btn know" type="button" data-action="flash-grade" data-value="known">Bilaman ✓</button></div>`}
  else if(g.mode==='mcq'||g.mode==='rush'){const prompt=gameChoicePrompt(w,g.mode,g.idx);body=`<div class="quiz-prompt">${esc(prompt.label)}</div><h3 class="quiz-word">${esc(prompt.text)}</h3><div class="choices">${mcqChoices(w,prompt.reverse)}</div><div class="feedback" id="feedback"></div>`}
  else if(g.mode==='pairs'){const group=g.batchEnds.findIndex(end=>end>g.batchStart),batch=g.items.slice(g.batchStart,g.batchEnds[group]),left=g.left||shuffle(batch),right=g.right||shuffle(batch);g.left=left;g.right=right;body=`<div class="quiz-prompt">Inglizcha so‘z va o‘zbekcha tarjimani juftlang · ${group+1} / ${g.batchEnds.length} guruh</div><div class="pair-grid"><div class="pair-col">${left.map(w=>`<button class="pair ${g.matched.has(w.id)?'matched':''} ${g.selected?.side==='left'&&g.selected.id===w.id?'selected':''}" ${g.matched.has(w.id)?'disabled':''} data-action="pair" data-side="left" data-id="${w.id}">${esc(w.w)}</button>`).join('')}</div><div class="pair-col">${right.map(w=>`<button class="pair ${g.matched.has(w.id)?'matched':''} ${g.selected?.side==='right'&&g.selected.id===w.id?'selected':''}" ${g.matched.has(w.id)?'disabled':''} data-action="pair" data-side="right" data-id="${w.id}">${esc(w.u)}</button>`).join('')}</div></div>`}
  else if(g.mode==='gap'){const variant=6+gameSeed(w,'gap')%4;body=`<div class="quiz-prompt">Kontekstdan foydalanib yashirilgan so‘z yoki iborani yozing</div><h3 class="quiz-word">${esc(gapText(w,variant))}</h3><p class="quiz-prompt">Yordam: ${esc(w.u)}</p><input id="gameAnswer" class="game-input" type="text" autocomplete="off" spellcheck="false" placeholder="Yetishmayotgan so‘z yoki ibora" aria-label="Yetishmayotgan so‘z yoki ibora"><div class="center-actions"><button type="button" class="primary-btn" data-action="check-input">Tekshirish</button><button type="button" class="secondary-btn" data-action="skip">O‘tkazib yuborish</button></div><div class="feedback" id="feedback"></div>`}
  else if(g.mode==='typing'){const prompt=gameTypingPrompt(w);body=`<div class="quiz-prompt">${esc(prompt.label)} · vaqt yozishni boshlaganingizda yuradi</div><h3 class="quiz-word">${esc(prompt.text)}</h3><input id="gameAnswer" class="game-input" type="text" autocomplete="off" spellcheck="false" placeholder="Inglizchasini yozing" aria-label="Inglizcha so‘z yoki ibora"><div class="center-actions"><button type="button" class="primary-btn" data-action="check-input">Tekshirish</button><button type="button" class="secondary-btn" data-action="skip">O‘tkazib yuborish</button></div><div class="feedback" id="feedback"></div>`}
- else if(g.mode==='sentence'){if(g.tokenFor!==w.id){g.sentenceSample=naturalExampleFor(w,20+gameSeed(w,'sentence')%4);const original=g.sentenceSample.trim().split(/\s+/);g.tokens=shuffle(original.map((x,i)=>({text:x,i})));g.picked=[];g.tokenFor=w.id}body=`<div class="quiz-prompt">${w.sampleAnswerSource?'Sample answerdagi gapni to‘g‘ri tartibga qo‘ying':'Har bir karta uchun boshqa kontekst: so‘zlarni to‘g‘ri tartibga qo‘ying'}</div><h3 class="quiz-word">${esc(w.u)}</h3><div class="answer-zone">${g.picked.length?g.picked.map((x,j)=>`<button class="token" type="button" data-action="remove-token" data-index="${j}">${esc(x.text)}</button>`).join(''):'Gapni shu yerda tuzing'}</div><div class="sentence-tokens">${g.tokens.map((x,j)=>`<button class="token" type="button" data-action="add-token" data-index="${j}">${esc(x.text)}</button>`).join('')}</div><div class="center-actions"><button type="button" class="primary-btn" data-action="check-sentence">Tekshirish</button><button type="button" class="secondary-btn" data-action="skip">O‘tkazib yuborish</button></div><div class="feedback" id="feedback"></div>`}
+ else if(g.mode==='sentence'){if(g.tokenFor!==w.id){g.sentenceSample=naturalExampleFor(w,20+gameSeed(w,'sentence')%4);const original=g.sentenceSample.trim().split(/\s+/);g.tokens=shuffle(original.map((x,i)=>({text:x,i})));g.picked=[];g.tokenFor=w.id}body=`<div class="quiz-prompt">So‘zlarni tartibga qo‘yib, to‘liq gap tuzing</div><h3 class="quiz-word">${esc(w.u)}</h3><div class="answer-zone">${g.picked.length?g.picked.map((x,j)=>`<button class="token" type="button" data-action="remove-token" data-index="${j}">${esc(x.text)}</button>`).join(''):'Gapni shu yerda tuzing'}</div><div class="sentence-tokens">${g.tokens.map((x,j)=>`<button class="token" type="button" data-action="add-token" data-index="${j}">${esc(x.text)}</button>`).join('')}</div><div class="center-actions"><button type="button" class="primary-btn" data-action="check-sentence">Tekshirish</button><button type="button" class="secondary-btn" data-action="skip">O‘tkazib yuborish</button></div><div class="feedback" id="feedback"></div>`}
  root.innerHTML=heading(g.kind==='pack'?(g.origin==='study'?'To‘plam quiz':g.origin==='daily'?'Kunlik o‘yin':g.origin==='mockanalysis'?'Mock iboralari':g.origin==='readingbooster'?'Reading Words':'To‘plam o‘yinlari'):'O‘yinlar',g.kind==='pack'?`${g.items.length} ta kartani shu o‘yinda mashq qiling.`:'Barcha tanlangan so‘zlarni o‘ynab mashq qiling.')+`<section class="game-stage">${gameBar(g)}${body}</section>`;if(['gap','typing'].includes(g.mode))$('#gameAnswer')?.focus()}
 function answerChoice(i){const g=state.game;if(!g||g.answered||g.paused)return;g.answered=true;const w=g.items[g.idx],right=g.options[i]?.id===w.id;const buttons=[...document.querySelectorAll('.choice')];buttons.forEach((b,j)=>{b.disabled=true;if(g.options[j].id===w.id)b.classList.add('right');else if(j===i)b.classList.add('wrong')});const feedback=$('#feedback');feedback.textContent=right?'To‘g‘ri!':`To‘g‘ri javob: ${g.reverse?w.w:w.u}`;feedback.className='feedback '+(right?'good':'bad');if(right){g.correct++;recordActivity();resolvedMistake(w)}else addMistake(w);if(g.mode==='rush')g.time=Math.min(60,Math.max(0,g.time+(right?1:-3)));const round=g.round;setTimeout(()=>{if(state.game?.round!==round)return;g.idx++;g.answered=false;g.options=null;if(g.idx>=g.items.length)finishGame();else if(g.mode==='rush'&&g.time<=0)pauseRush();else{saveGame();renderGame()}},730)}
 function pairClick(side,id){const g=state.game;if(!g||g.matched.has(id))return;if(!g.selected||g.selected.side===side){g.selected={side,id};renderGame();return}if(g.selected.id===id){g.matched.add(id);g.correct++;g.idx++;recordActivity();resolvedMistake(dailyWordById(id));g.selected=null;const end=g.batchEnds.find(x=>x>g.batchStart);if(g.matched.size>=end-g.batchStart){if(g.idx>=g.items.length){finishGame();return}g.batchStart=g.idx;g.matched=new Set();g.left=null;g.right=null}saveGame();renderGame()}else{addMistake(dailyWordById(g.selected.id));addMistake(dailyWordById(id));g.selected=null;toast('Bu juftlik mos kelmadi.');renderGame()}}
@@ -1842,6 +1808,7 @@ window.VocabCloud.start(async account=>{
   const assetUrl=new URL('data.json',document.baseURI).href;
   const response=await fetch(assetUrl,{cache:'no-store'});if(!response.ok)throw Error('data.json HTTP '+response.status);
   const loaded=await response.json();if(!Array.isArray(loaded)||!loaded.length)throw Error('data.json bo‘sh yoki noto‘g‘ri');
+  try{await window.VividPracticeSentences.load()}catch(error){console.warn('Practice sentence bank unavailable')}
   words=loaded;topics=[...new Set(words.map(w=>w.t).filter(Boolean))].sort((a,b)=>a==='Umumiy IELTS'?1:b==='Umumiy IELTS'?-1:a.localeCompare(b,'uz'));
  }catch(error){dataError=error;console.error('VIVID vocabulary data error',error)}
  if(dataError){root.innerHTML='<div class="empty-state"><strong>Asosiy ma’lumotlar yuklanmadi</strong><p>Live Server orqali dist/index.html faylini oching va sahifani qayta yuklang.</p><button type="button" class="primary-btn" onclick="location.reload()">Qayta yuklash</button></div>';return}

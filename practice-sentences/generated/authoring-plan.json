@@ -1,0 +1,48 @@
+{
+  "terms": 39236,
+  "sentences": 78472,
+  "batches": 2453,
+  "model": "openai/gpt-5.4-mini",
+  "token_prices_usd": {
+    "input": "0.00000075",
+    "output": "0.0000045",
+    "input_cache_read": "0.000000075",
+    "web_search": "10",
+    "service_tiers": {
+      "priority": {
+        "input": "0.0000015",
+        "output": "0.000009",
+        "input_cache_read": "0.00000015"
+      },
+      "flex": {
+        "input": "0.000000375",
+        "output": "0.00000225",
+        "input_cache_read": "0.0000000375"
+      }
+    },
+    "fast": {
+      "input": "0.0000015",
+      "output": "0.000009",
+      "input_cache_read": "0.00000015"
+    },
+    "regional": {
+      "us": {
+        "input": "0.000000825",
+        "output": "0.00000495",
+        "input_cache_read": "0.0000000825",
+        "fast": {
+          "input": "0.00000165",
+          "output": "0.0000099",
+          "input_cache_read": "0.000000165"
+        }
+      }
+    }
+  },
+  "estimated_generation_and_review_usd": 36.56,
+  "estimate_assumptions": {
+    "input_tokens": 8730760,
+    "output_tokens": 6670120,
+    "excludes": "Retries, reasoning variation, and manual OCR repair."
+  },
+  "paid_requests_sent": false
+}

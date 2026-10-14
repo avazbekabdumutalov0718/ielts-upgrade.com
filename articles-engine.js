@@ -521,18 +521,19 @@ function startArticle(id){
  active=db.find(a=>a.id===id)||null;if(!active)return;stage=rec().stage||1;block=0;chosenAnswers={};gateScores=[...(rec().gateScores||[])];gateIndex=-1;stopwatch=0;running=false;clearInterval(ticker);history.replaceState(null,'','#articles/'+encodeURIComponent(id));ensureHost();host()?.scrollIntoView({block:'start'});
 }
 function gameWords(){return (active?.collocations||[]).filter(x=>x.w).map(x=>({w:x.w,u:x.u||localText(x.w)||'',e:x.e||''}));}
-function gateRound(i){
+async function gateRound(i){
  const bag=rec().cart||[];if(!bag.length)return;
  if(i===4){return finalBasketQuiz(bag)}
  gateIndex=i;let word=bag[i%bag.length],other=bag.filter(x=>x.w!==word.w);
  let box=qs('#ar-gate-play');if(!box)return;
+ if(i===3){try{await window.VividPracticeSentences.load()}catch{box.textContent='Mashq gaplari yuklanmadi. Qayta urinib ko‘ring.';return;}if(!window.VividPracticeSentences.get(word,'gap')){box.textContent='Bu ibora uchun yangi gap hali tayyor emas.';return;}}
  const opts=[word,...other.slice(0,3)];if(opts.length===1)opts.push({w:'not this word',u:'boshqa so‘z'});opts.sort((a,b)=>a.w.localeCompare(b.w));
  if(!word.u){
   const letters=word.w.replace(/[^A-Za-z]/g,'');
   const hint=letters.slice(0,1)+'_'.repeat(Math.max(1,letters.length-1));
   box.innerHTML='<div class="ar-round"><h4>English vocabulary practice '+(i+1)+'</h4><p>Type the saved word: '+E(hint)+'</p><input id="ar-round-input" placeholder="English word"><button id="ar-round-check">Check</button><div class="ar-round-status"></div></div>';
  }else if(i===0||i===1)box.innerHTML='<div class="ar-round"><h4>'+(i===0?'Match the correct Uzbek meaning':'Choose the English collocation')+'</h4><p><strong>'+E(i===0?word.w:word.u)+'</strong></p>'+opts.map((o,j)=>'<button data-choice="'+j+'">'+E(i===0?o.u:o.w)+'</button>').join('')+'<div class="ar-round-status"></div></div>';
- else box.innerHTML='<div class="ar-round"><h4>'+(i===2?'Type the original English term':'Fill the collocation')+'</h4><p>'+E(i===2?(word.u||('English term beginning with '+word.w[0])):(word.e||('This article contains '+word.w)).replace(word.w,'_____'))+'</p><input id="ar-round-input" placeholder="Type the English term"><button id="ar-round-check">Check</button><div class="ar-round-status"></div></div>';
+ else box.innerHTML='<div class="ar-round"><h4>'+(i===2?'Type the original English term':'Fill the collocation')+'</h4><p>'+E(i===2?(word.u||('English term beginning with '+word.w[0])):window.VividPracticeSentences.get(word,'gap').masked)+'</p><input id="ar-round-input" placeholder="Type the English term"><button id="ar-round-check">Check</button><div class="ar-round-status"></div></div>';
  const finish=()=>{if(!gateScores.includes(i)){gateScores.push(i);rec().gateScores=[...gateScores];persist()}let done=qs('.ar-round-status',box);if(done)done.textContent='✓ Correct. Open the next game.';qsa('[data-gate]').forEach((b,k)=>{b.disabled=k>gateScores.length;if(k<gateScores.length)b.textContent='✓ '+b.textContent.replace(/^✓ /,'')});if(gateScores.length===5){rec().gateDone=true;persist();const section=qs('.ar-gate');section.outerHTML=gateMarkup();wireGate()}};
  qsa('[data-choice]',box).forEach(b=>b.onclick=()=>{let selected=opts[Number(b.dataset.choice)];if(selected?.w===word.w)finish();else qs('.ar-round-status',box).textContent='Try again'});
  qs('#ar-round-check',box)?.addEventListener('click',()=>{let answer=norm(qs('#ar-round-input',box)?.value);if(answer===norm(word.w))finish();else qs('.ar-round-status',box).textContent='Try again · Hint: '+word.w.slice(0,1)+'…'});
@@ -595,7 +596,7 @@ function openGame(mode){
  const r=rec();
  if(!r.articleGameSessions)r.articleGameSessions={};
  window.VividArticleGames.launch({
-  mode,section:qs('#ar-collocation-games'),entries:gameWords(),paragraphs:active?.body||[],
+  mode,section:qs('#ar-collocation-games'),entries:gameWords(),
   getState:()=>r.articleGameSessions[mode]||{},
   setState:value=>{r.articleGameSessions[mode]=value;persist();}
  });

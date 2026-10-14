@@ -1,0 +1,90 @@
+{
+  "version": "original-practice-v1",
+  "total_terms": 39282,
+  "covered_terms": 46,
+  "sentences": 92,
+  "missing_terms": 39236,
+  "complete": false,
+  "failures": [],
+  "groups": {
+    "main": {
+      "records": 4402,
+      "covered_records": 32
+    },
+    "part1": {
+      "records": 2090,
+      "covered_records": 0
+    },
+    "part2": {
+      "records": 455,
+      "covered_records": 0
+    },
+    "part3": {
+      "records": 5145,
+      "covered_records": 0
+    },
+    "articles": {
+      "records": 1650,
+      "covered_records": 15
+    },
+    "max_speaking": {
+      "records": 900,
+      "covered_records": 2
+    },
+    "max_writing": {
+      "records": 600,
+      "covered_records": 0
+    },
+    "writing": {
+      "records": 450,
+      "covered_records": 0
+    },
+    "writing_ideas": {
+      "records": 453,
+      "covered_records": 0
+    },
+    "topic100": {
+      "records": 1500,
+      "covered_records": 0
+    },
+    "mock": {
+      "records": 65,
+      "covered_records": 0
+    },
+    "reading_c1": {
+      "records": 180,
+      "covered_records": 0
+    },
+    "grammar_forms": {
+      "records": 56,
+      "covered_records": 0
+    },
+    "reading_lexicon": {
+      "records": 28829,
+      "covered_records": 2
+    },
+    "reading_verified": {
+      "records": 188,
+      "covered_records": 0
+    },
+    "reading_translations": {
+      "records": 5965,
+      "covered_records": 1
+    },
+    "articles_glossary": {
+      "records": 5002,
+      "covered_records": 32
+    },
+    "articles_core": {
+      "records": 309,
+      "covered_records": 0
+    },
+    "reading_hints": {
+      "records": 20,
+      "covered_records": 0
+    }
+  },
+  "semantic_review": "Authored seed inspected individually; no claim of automated semantic proof.",
+  "scope": "Word/collocation/form inventory plus dictionaries; excludes full essay expressions.",
+  "source_sha256": "286bc31385bcf9a4e640578d6749fa29dd4ee2f211a55150d72a35db99c5ff28"
+}
