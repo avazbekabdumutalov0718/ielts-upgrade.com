@@ -17,7 +17,7 @@ function loadProgress(){try{const raw=localStorage.getItem(key())||localStorage.
 function save(){try{localStorage.setItem(key(),JSON.stringify(progress))}catch{}window.VocabCloud?.queue?.()}
 function getProgress(){return loadProgress()}
 function setProgress(v){progress={done:{},notes:{},sampleTags:{},grammar:{},grammarAnswers:{},expressionAnswers:{},collocationKnown:{},mockHistory:[],...(v&&typeof v==='object'?v:{})};save()}
-async function ensure(){if(data)return data;if(loading)return loading;loading=fetch('writing-data.json').then(r=>{if(!r.ok)throw Error('Writing data yuklanmadi');return r.json()}).then(d=>{data=window.VividWritingGrammar2026?.refresh?.(d)||d;loadProgress();return data}).finally(()=>loading=null);return loading}
+async function ensure(){if(data)return data;if(loading)return loading;loading=fetch('writing-data.json').then(r=>{if(!r.ok)throw Error('Writing data yuklanmadi');return r.json()}).then(d=>{data=d;try{window.VividWritingGrammar2026?.refresh?.(data)}catch(error){console.error('Writing grammar refresh failed; original lessons preserved',error)}loadProgress();return data}).finally(()=>loading=null);return loading}
 function sampleById(id){return data.samples.find(x=>x.id===id)}
 function sourceCounts(){return Object.entries(data.sampleCounts||{}).sort((a,b)=>b[1]-a[1])}
 function sentenceParagraphs(answer){return String(answer||'').split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean)}
