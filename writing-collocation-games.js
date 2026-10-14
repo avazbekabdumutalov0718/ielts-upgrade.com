@@ -263,7 +263,7 @@ function sentence(card,mode){
 }
 function cardsOf(items,topic){
  const seen=new Set();
- return (Array.isArray(items)?items:[]).map((o,i)=>({id:'writing:'+String(topic||o.topic||'IELTS Writing')+':'+String(o.id||i),term:tidy(o.term||o.w||o.phrase||o.collocation),uz:tidy(o.uz||o.u||o.translation||o.meaning||o.d||o.definition||''),topic:String(topic||o.topic||'IELTS Writing')})).filter(x=>{if(!x.term||seen.has(norm(x.term)))return false;seen.add(norm(x.term));return true});
+ return (Array.isArray(items)?items:[]).filter(o=>o&&typeof o==='object').map((o,i)=>({id:'writing:'+String(topic||o.topic||'IELTS Writing')+':'+String(o.id||i),term:tidy(o.term||o.w||o.phrase||o.collocation),uz:tidy(o.uz||o.u||o.translation||o.meaning||o.d||o.definition||''),topic:String(topic||o.topic||'IELTS Writing')})).filter(x=>{if(!x.term||seen.has(norm(x.term)))return false;seen.add(norm(x.term));return true});
 }
 function blank(card,mode){
  const text=sentence(card,mode),rx=new RegExp(escapeRx(card.term.replace(/^to\s+/i,'')),'i');
@@ -339,7 +339,7 @@ function click(ev){
  }
  const act=button.dataset.wgc;
  if(act==='close')close();
- else if(act==='flip'){if(!game.flip)game.score++;game.flip=!game.flip;render()}
+ else if(act==='flip'){if(!game.checked){game.score++;game.checked=true}game.flip=!game.flip;render()}
  else if(act==='undo'){game.built.pop();paintBuilder()}
  else if(act==='check'){
    if(game.checked)return;
