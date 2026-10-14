@@ -1,0 +1,23 @@
+name: Writing Quality Audit
+on:
+  push:
+    paths:
+      - 'writing-data.json'
+      - 'writing-grammar-refresh.js'
+      - 'writing-collocation-games.js'
+      - 'writing-engine.js'
+      - 'scripts/audit-writing-quality.mjs'
+      - '.github/workflows/writing-quality-audit.yml'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Audit every Writing grammar exercise and collocation context
+        run: node scripts/audit-writing-quality.mjs
