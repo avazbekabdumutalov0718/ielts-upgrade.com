@@ -39,7 +39,7 @@
  const completed=(s,day)=>knownTasks().filter(t=>isDone(s,day,t)).length;
  const activeDay=(s,day)=>day>=START&&(completed(s,day)>0||duration(s,day)>0||logs(s).some(x=>x.day===day));
  const sum=(arr,fn)=>arr.reduce((a,x)=>a+fn(x),0);
- let tab='dashboard',weekCursor=0,focused=null,focusCategory='Reading',focusElapsed=0,focusSince=0,focusTicker=null;
+ let tab='dashboard',weekCursor=0,focused=null,focusCategory='Reading',manualCategory='Reading',focusElapsed=0,focusSince=0,focusTicker=null;
  let reminderPending=false, chartPeriod=30, editingDay=null, periodMode='week', periodAnchor=(localDate()<START?START:localDate());
  function appendStyleSafe(){
    if(document.getElementById('goalsAdvancedStyles'))return;
@@ -188,17 +188,25 @@
  }
  function focus(s){
    const day=selected(),list=sessions(s).filter(x=>x.day===day);
-   const options=SKILLS.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
    const total=duration(s,day),manual=clamp(valDay(s,day).hours,0,24)*60;
+   const pills=(kind,selectedSkill)=>'<div class="ga-skill-pill-list" role="group" aria-label="'+(kind==='focus'?'Focus skill':'Manual session skill')+'">'+
+     SKILLS.map(x=>'<button type="button" class="ga-skill-pill '+(selectedSkill===x?'selected':'')+'" data-ga-'+kind+'-skill="'+esc(x)+'" aria-pressed="'+(selectedSkill===x?'true':'false')+'">'+esc(x)+'</button>').join('')+'</div>';
    return '<section class="ga-panel ga-focus"><h3>⏲ Focus Timer · Automatic Study Hours</h3>'+
      '<div class="ga-focus-clock" id="gaFocusClock">'+focusClock()+'</div>'+
-     '<div class="ga-focus-controls"><label>Skill<select id="gaFocusCat">'+options+'</select></label><label>Rating (1–10)<input id="gaFocusRating" type="number" min="1" max="10" value="8"></label><button id="gaFocusStart">'+(focused?'Running…':'▶ Start')+'</button><button id="gaFocusPause">Ⅱ Pause</button><button id="gaFocusSave">✓ Save Session</button><button id="gaFocusReset" type="button">↻ Reset</button></div>'+
-     '<p class="ga-muted">Taymer ishlayotganda vaqt avtomatik o‘lchanadi. “Save Session” bosilganda kunlik hisobotga qo‘shiladi. Brauzer yopilsa, saqlanmagan sessiya yo‘qolishi mumkin.</p>'+
+     '<div class="ga-focus-skill-selector"><b>🎯 Taymer uchun skillni tanlang</b><p class="ga-muted">Reading, Listening, Speaking, Writing, SAT va boshqa yo‘nalishlardan birini tanlang.</p>'+
+     pills('focus',focused?.category||focusCategory)+'<input type="hidden" id="gaFocusCat" value="'+esc(focused?.category||focusCategory)+'"></div>'+
+     '<div class="ga-focus-controls"><label>Rating (1–10)<input id="gaFocusRating" type="number" min="1" max="10" value="8"></label><button type="button" id="gaFocusStart">'+(focused?'● Running':'▶ Start')+'</button><button type="button" id="gaFocusPause">Ⅱ Pause</button><button type="button" id="gaFocusSave">✓ Save Session</button><button type="button" id="gaFocusReset">↻ Reset</button></div>'+
+     '<p class="ga-muted">Skillni Start bosishdan oldin tanlang. Boshlangan sessiya tugamaguncha skill o‘zgarmaydi; Pause → Save Session yoki Reset qilib keyingi skillga o‘ting. Vaqt tanlangan kunga ('+esc(day)+') saqlanadi.</p>'+
      '<div class="ga-tiles">'+card('⏲','Timer logged',hh(total),'Tanlangan sana')+card('✍️','Manual hours',hh(Math.round(manual)),'Asosiy Goals trackeridan')+
       card('📌','Combined total',hh(Math.round(manual)+total),'Ikki hisob alohida kiritilgan')+'</div>'+
-     '<form id="gaManualSession" class="ga-form"><label>Skill<select name="category">'+options+'</select></label><label>Minutes<input name="minutes" type="number" min="1" max="1440" value="30" required></label><label>Session rating (1–10)<input name="rating" type="number" min="1" max="10" value="8" required></label><button>Add manual session</button></form></section>'+
+     '<form id="gaManualSession" class="ga-manual-form">'+
+      '<div class="ga-focus-skill-selector"><b>✍️ Qo‘lda kiritish uchun skill</b>'+pills('manual',manualCategory)+
+      '<input type="hidden" name="category" id="gaManualCategory" value="'+esc(manualCategory)+'"></div>'+
+      '<div class="ga-form ga-manual-fields"><label>Minutes<input name="minutes" type="number" min="1" max="1440" value="30" required></label>'+
+      '<label>Session rating (1–10)<input name="rating" type="number" min="1" max="10" value="8" required></label>'+
+      '<button type="submit">+ Add manual session</button></div></form></section>'+
      '<section class="ga-panel"><h3>⭐ Study Session Rating · History</h3>'+
-     (list.length?'<div class="ga-session-list">'+list.slice().reverse().map(x=>'<div><span>'+esc(x.category)+'<small>'+esc(x.source||'focus')+'</small></span><b>'+hh(mins(x.minutes))+'</b><em>'+esc(x.rating||'—')+'/10</em><button data-ga-session-remove="'+esc(x.id)+'">×</button></div>').join('')+'</div>':'<p class="ga-muted">Hali sessiya qayd qilinmagan.</p>')+'</section>';
+     (list.length?'<div class="ga-session-list">'+list.slice().reverse().map(x=>'<div><span>'+esc(x.category)+'<small>'+esc(x.source||'focus')+'</small></span><b>'+hh(mins(x.minutes))+'</b><em>'+esc(x.rating||'—')+'/10</em><button type="button" data-ga-session-remove="'+esc(x.id)+'">×</button></div>').join('')+'</div>':'<p class="ga-muted">Hali sessiya qayd qilinmagan.</p>')+'</section>';
  }
  function analytics(s){
    const st=stats(s),today=localDate(),last=st.days[st.days.length-1]||START;
@@ -371,7 +379,7 @@
  function saveSession(cat,seconds,rating,source){
    const measured=mins(Math.round(seconds/60));
    if(measured<1){window.alert('Saqlash uchun kamida 1 daqiqa ishlang.');return false;}
-   return update(e=>{initialize(e);e.sessions.push({id:id(),day:localDate(),category:cat,minutes:measured,rating,source,at:new Date().toISOString()})});
+   return update(e=>{initialize(e);e.sessions.push({id:id(),day:selected(),category:cat,minutes:measured,rating,source,at:new Date().toISOString()})});
  }
  function focusPause(){if(!focused)return;focusElapsed+=Math.floor((Date.now()-focusSince)/1000);focused=null;syncClock()}
  function syncClock(){const x=document.getElementById('gaFocusClock');if(x)x.textContent=focusClock();}
@@ -391,6 +399,31 @@
    if(!authorized()||!api()?.isOpen())return;
    const root=e.target.closest('#vividGoalsPage');if(!root)return;
    let el=e.target.closest('[data-ga-tab]');if(el){tab=el.dataset.gaTab;api().refresh();return;}
+   if((el=e.target.closest('[data-ga-focus-skill]'))){
+     const skill=el.dataset.gaFocusSkill;
+     if(!SKILLS.includes(skill))return;
+     if(focused||focusElapsed>0){
+       const note=document.querySelector('#vividGoalsPage .ga-focus-skill-selector .ga-muted');
+       if(note)note.textContent='Sessiya davom etmoqda yoki pauzada. Skillni o‘zgartirish uchun Save Session yoki Reset bosing.';
+       return;
+     }
+     focusCategory=skill;
+     document.querySelectorAll('#vividGoalsPage [data-ga-focus-skill]').forEach(btn=>{
+       const on=btn.dataset.gaFocusSkill===skill;btn.classList.toggle('selected',on);btn.setAttribute('aria-pressed',String(on));
+     });
+     const hidden=document.getElementById('gaFocusCat');if(hidden)hidden.value=skill;
+     return;
+   }
+   if((el=e.target.closest('[data-ga-manual-skill]'))){
+     const skill=el.dataset.gaManualSkill;
+     if(!SKILLS.includes(skill))return;
+     manualCategory=skill;
+     document.querySelectorAll('#vividGoalsPage [data-ga-manual-skill]').forEach(btn=>{
+       const on=btn.dataset.gaManualSkill===skill;btn.classList.toggle('selected',on);btn.setAttribute('aria-pressed',String(on));
+     });
+     const hidden=document.getElementById('gaManualCategory');if(hidden)hidden.value=skill;
+     return;
+   }
    if((el=e.target.closest('[data-ga-period]'))){periodMode=el.dataset.gaPeriod;api().refresh();return;}
    if((el=e.target.closest('[data-ga-choose-month]'))){
      periodAnchor=el.dataset.gaChooseMonth+'-15';periodMode='month';api().refresh();return;
@@ -468,7 +501,9 @@
      update(x=>{initialize(x);x.customGoals.push({id:id(),name:name.slice(0,80)})});
    }else if(form.id==='gaManualSession'){
      const n=clamp(d.minutes,1,1440);if(!n)return;
-     update(x=>{initialize(x);x.sessions.push({id:id(),day,category:SKILLS.includes(d.category)?d.category:'Reading',minutes:mins(n),rating:Math.round(clamp(d.rating,1,10)),source:'manual',at:new Date().toISOString()})});
+     const cat=SKILLS.includes(d.category)?d.category:manualCategory;
+     manualCategory=cat;
+     update(x=>{initialize(x);x.sessions.push({id:id(),day,category:cat,minutes:mins(n),rating:Math.round(clamp(d.rating,1,10)),source:'manual',at:new Date().toISOString()})});
    }else if(form.id==='gaExamForm'){
      update(x=>{initialize(x);x.settings.examDates={ielts:String(d.ielts),sat:String(d.sat),turkish:String(d.turkish)};x.settings.examTimes={ielts:String(d.ieltsTime||'00:00'),sat:String(d.satTime||'00:00'),turkish:String(d.turkishTime||'00:00')};});
    }else if(form.id==='gaReflectionForm'){
