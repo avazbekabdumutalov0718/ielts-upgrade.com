@@ -32,7 +32,7 @@
    if(required){
     let got=clamp(d.counts?.[task.id],0,99999);
     if(task.rolling)got+=clamp(valDay(s,offset(day,-1)).counts?.[task.id],0,99999);
-    return !!d.checks?.[task.id]||got>=required;
+    return Object.prototype.hasOwnProperty.call(d.checks||{},task.id)?!!d.checks[task.id]:got>=required;
    }
    return !!d.checks?.[task.id];
  };
@@ -266,8 +266,8 @@
       '<div class="gs-skill-progress"><i style="width:'+Math.round(100*count/group.tasks.length)+'%"></i></div>'+
       '<div class="gs-skill-tasks">'+group.tasks.map(t=>{
         const enabled=!!t.target,goal=Number(extra(s).targets?.[t.id])||t.target||0,value=Number(valDay(s,day).counts?.[t.id])||0;
-        return '<div class="gs-skill-task"><label class="gs-task-left"><input type="checkbox" data-goal-check="'+t.id+'" '+(isDone(s,day,t)?'checked':'')+' aria-label="'+esc(t.name)+'">'+
-          '<span>'+esc(extra(s).names?.[t.id]||t.name)+'</span></label>'+
+        return '<div class="gs-skill-task"><button type="button" class="gs-task-left gs-tick-control '+(isDone(s,day,t)?'is-checked':'')+'" data-goal-toggle="'+t.id+'" aria-pressed="'+(isDone(s,day,t)?'true':'false')+'" aria-label="'+esc(t.name)+'">'+
+          '<span class="gs-tick-box" aria-hidden="true">'+(isDone(s,day,t)?'✓':'')+'</span><span>'+esc(extra(s).names?.[t.id]||t.name)+'</span></button>'+
           (enabled?'<label class="gs-task-count"><input type="number" data-goal-count="'+t.id+'" min="0" max="99999" value="'+value+'"> / '+goal+'</label>':'')+
           '<span class="goals-proof-anchor" data-proof-task="'+t.id+'" data-proof-day="'+day+'"></span></div>';
       }).join('')+'</div></section>';
@@ -319,7 +319,7 @@
       taskChecklist(s,['SAT & English Math'])+'</section>'+
     '<section class="gs-sat-milestones">'+
       [['sat_math_nov','Finish grade 8–9 Maths','Before 1 November'],['sat_lessons','Start SAT Maths lessons','1 November'],['english_math','Start English Maths lessons','1 November']].map(([k,l,d])=>
-       '<div class="gs-sat-row" data-sat-row="milestone_'+k+'"><label><input type="checkbox" data-goal-milestone="'+k+'" '+(s.milestones?.[k]?'checked':'')+'><span><b>'+l+'</b><small>'+d+'</small></span></label><span class="goals-proof-anchor" data-proof-task="milestone_'+k+'" data-proof-day="'+day+'"></span></div>').join('')+'</section>'+
+       '<div class="gs-sat-row" data-sat-row="milestone_'+k+'"><button type="button" class="gs-sat-milestone gs-tick-control '+(s.milestones?.[k]?'is-checked':'')+'" data-goal-milestone-toggle="'+k+'" aria-pressed="'+(s.milestones?.[k]?'true':'false')+'"><span class="gs-tick-box" aria-hidden="true">'+(s.milestones?.[k]?'✓':'')+'</span><span><b>'+l+'</b><small>'+d+'</small></span></button><span class="goals-proof-anchor" data-proof-task="milestone_'+k+'" data-proof-day="'+day+'"></span></div>').join('')+'</section>'+
     '<section class="ga-panel"><h3>📝 SAT Study Notes</h3><p class="ga-muted">Bugun yechilgan mashqlar, qiyin bo‘lgan mavzu va kitobdagi sahifalar haqida yozing. Qayd tanlangan kunga saqlanadi.</p>'+
       '<form id="gaSATNotes" class="ga-reflection"><label>SAT Maths · '+day+'<textarea name="notes" rows="5" maxlength="4000" placeholder="Bugun o‘rganilgan mavzular, misollar va xulosalar...">'+esc(note)+'</textarea></label><button type="submit">Save SAT notes</button></form>'+
       '<div class="gp-proof-for-notes goals-proof-anchor" data-proof-task="sat_notes" data-proof-day="'+day+'"></div></section>'+
