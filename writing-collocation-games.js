@@ -22,9 +22,10 @@ function domain(topic,term){return domains.find(x=>x[0].test(topic+' '+term))?.s
 function kind(term){
  const t=term.toLowerCase();
  if(/ly$/.test(t)&&!t.includes(' '))return 'adverb';
+ if(/^(on a |on an |in the long run|in the short term|at the same time|for this reason|as a result|by contrast|in contrast|on the other hand|over time|to a large extent)/.test(t))return 'adverbial';
  if(/^(improving|reducing|promoting|addressing|protecting|providing|supporting|encouraging|investing|developing|using|building|making|creating|learning|raising)\b/.test(t))return 'gerund';
- if(/^(to )?(reduce|improve|address|promote|make|take|play|have|give|create|provide|tackle|raise|build|support|encourage|protect|adopt|achieve|establish|maintain|increase|decrease|develop|enhance|invest|ensure|foster|set|strike|meet|solve|implement|introduce|generate|gain|keep|bring|carry|offer|allow|help|consider|focus|deal)\b/.test(t))return 'verb';
- if(/^(highly|increasingly|particularly|deeply|fully|extremely|significantly)\s+\w+(ed|ive|al|able|ous|ent|ant|ful)\b/.test(t)||(!t.includes(' ')&&/(ous|ive|ful|less|able|ible|al|ic|ary|ent|ant|ed)$/.test(t)))return 'adjective';
+ if(/^(to )?(reduce|improve|address|promote|make|take|play|have|give|create|provide|tackle|raise|build|support|encourage|protect|adopt|achieve|establish|maintain|increase|decrease|develop|enhance|invest|ensure|foster|set|strike|meet|solve|implement|introduce|generate|gain|keep|bring|carry|offer|allow|help|consider|focus|deal|boost|stimulate|facilitate|mitigate|alleviate|strengthen|prioritise|prioritize|contribute|combat|overcome|prevent|expand|respond|recognise|recognize|transform|enable|preserve|strike|reach|achieve|bring|lead)\b/.test(t))return 'verb';
+ if(/^(highly|increasingly|particularly|deeply|fully|extremely|significantly|widely|broadly|generally|largely|closely|strongly|relatively|quite)\s+\w+(ed|ive|al|able|ous|ent|ant|ful|ic|ary|ible|less)\b/.test(t)||(!t.includes(' ')&&/(ous|ive|ful|less|able|ible|al|ic|ary|ent|ant|ed)$/.test(t)))return 'adjective';
  return 'noun';
 }
 const frame={
@@ -68,6 +69,16 @@ const frame={
  (t,a,p)=>'The evidence seemed '+t+' when viewed alongside previous reports.',
  (t,a,p)=>'Several observers described the outcome as '+t+' after the consultation.'
  ],
+ adverbial:[
+ (t,a,p)=>'The committee reviews its findings '+t+' to ensure that its recommendations remain relevant.',
+ (t,a,p)=>'Local authorities assess the impact of their decisions '+t+' before revising the budget.',
+ (t,a,p)=>'The researchers compare results '+t+' instead of relying on a single observation.',
+ (t,a,p)=>'The council updates residents on its progress '+t+' through public reports.',
+ (t,a,p)=>'The strategy is reassessed '+t+' as new information becomes available.',
+ (t,a,p)=>'Independent specialists monitor these indicators '+t+' to identify emerging risks.',
+ (t,a,p)=>'Schools evaluate student progress '+t+' so that support can be adjusted promptly.',
+ (t,a,p)=>'The department consults local communities '+t+' before adopting new measures.'
+ ],
  adverb:[
  (t,a,p)=>'The figures changed '+t+' after the funding system was revised.',
  (t,a,p)=>'Demand increased '+t+' during the final phase of the programme.',
@@ -79,13 +90,49 @@ const frame={
  (t,a,p)=>'The programme expanded '+t+' following the introduction of new grants.'
  ]
 };
+function specificSentence(term,key,actor,area){
+ const t=term.toLowerCase();let options=[];
+ if(/^take into account$|^take account of$/.test(t))options=[
+ 'The council should '+term+' household income when reviewing transport fees.',
+ 'A credible policy must '+term+' the different needs of rural communities.',
+ 'Researchers need to '+term+' regional differences before drawing conclusions.',
+ 'An effective budget should '+term+' the cost of essential public services.',
+ 'The committee must '+term+' the views of parents and teachers.',
+ 'Local planners ought to '+term+' future population growth.',
+ 'A fair assessment will '+term+' the pressures facing low-income households.'];
+ else if(/^play (?:an? )?(?:important|crucial|major|vital|central|key|significant|essential) role/.test(t))options=[
+ 'Teachers can '+term+' in helping young people develop critical thinking.',
+ 'Access to reliable information may '+term+' in shaping public attitudes.',
+ 'Public transport is expected to '+term+' in reducing urban pollution.',
+ 'Families often '+term+' in supporting children through school.',
+ 'Independent research can '+term+' in the development of effective policy.',
+ 'Local businesses may '+term+' in creating employment opportunities.',
+ 'Universities continue to '+term+' in training skilled professionals.'];
+ else if(/^(raise awareness of|draw attention to|pay attention to|contribute to|lead to|result in|depend on|focus on|have access to|provide access to|take responsibility for|take action on|deal with)$/.test(t))options=[
+ 'Local institutions need to '+term+' the needs of vulnerable residents.',
+ 'The policy review could '+term+' long-term improvements in public services.',
+ 'The committee should '+term+' environmental risks rather than short-term publicity.',
+ 'Public investment can help communities '+term+' reliable healthcare.',
+ 'The new strategy aims to '+term+' differences in educational outcomes.',
+ 'The research group will '+term+' the wider effects of the policy.',
+ 'Decision-makers should '+term+' evidence before setting priorities.'];
+ else if(/^(as a result|for this reason|on the other hand|in contrast|by contrast|in the long run|in the short term|at the same time)$/.test(t))options=[
+ term+', sustained investment could improve access to essential services.',
+ term+', the committee recommended reviewing the current approach.',
+ term+', small businesses may struggle to absorb the additional costs.',
+ term+', the benefits of the policy may become clearer over time.',
+ term+', local communities need reliable information before deciding.',
+ term+', the research highlights the importance of long-term planning.',
+ term+', a balanced response would address both costs and benefits.'];
+ return options.length?options[hash(key)%options.length]:null;
+}
 const cached=new Map(),globalUsed=new Set();
 function sentence(card,mode){
  const k=card.id+'|'+card.topic+'|'+mode;if(cached.has(k))return cached.get(k);
  const term=card.term.replace(/^to\s+/i,''),d=domain(card.topic,term),type=kind(term),bank=frame[type];
  let output='';
  for(let i=0;i<bank.length;i++){
-   output=bank[(hash(k)+i)%bank.length](term,d[0],d[1]);
+   output=specificSentence(term,k+'|'+i,d[0],d[1])||bank[(hash(k)+i)%bank.length](term,d[0],d[1]);
    if(!globalUsed.has(norm(output)))break;
  }
  if(globalUsed.has(norm(output)))output=output+' The recommendation will be reviewed again next year.';
