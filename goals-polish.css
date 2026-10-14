@@ -159,3 +159,52 @@
 #vividGoalsPage .gs-sat-milestone small{font-size:11px;color:#97869d}
 #vividGoalsPage .gs-skill-task:has(.gs-tick-control.is-checked),
 #vividGoalsPage .goals-task:has(.gs-tick-control.is-checked){background:#faf5ff!important;border-radius:10px!important}
+
+/* g7: Always-accessible native proof input and per-task upload feedback */
+#vividGoalsPage .gp-upload-label{
+  position:relative!important;display:inline-flex!important;align-items:center;justify-content:center;
+  min-height:34px!important;min-width:95px!important;
+  padding:7px 12px!important;cursor:pointer!important;overflow:hidden!important;
+  vertical-align:middle!important;
+}
+#vividGoalsPage .gp-upload-label:focus-within{outline:3px solid #ac8bd8!important;outline-offset:2px}
+#vividGoalsPage .gp-native-file{
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+  opacity:0!important;z-index:2!important;cursor:pointer!important;font-size:0!important;
+}
+#vividGoalsPage .gp-inline-status{display:block;flex-basis:100%;width:100%;
+  font-size:11px;line-height:1.5;color:#61517b;font-weight:650;
+  overflow-wrap:anywhere;
+}
+#vividGoalsPage .gp-inline-status:empty{display:none}
+#vividGoalsPage .gp-inline-status[data-kind="error"]{color:#b52e4f}
+#vividGoalsPage .gp-inline-status[data-kind="success"]{color:#277b58}
+#vividGoalsPage .gp-inline-status[data-kind="warning"]{color:#946021}
+#vividGoalsPage .gp-status{overflow-wrap:anywhere}
+#vividGoalsPage .ga-focus-skill-selector{
+  width:100%;padding:16px;margin:12px 0 15px;background:#faf7fd;
+  border:1px solid #ece2f2;border-radius:14px;
+}
+#vividGoalsPage .ga-focus-skill-selector>b{font-size:13px;color:#3e2c53}
+#vividGoalsPage .ga-focus-skill-selector .ga-muted{margin:7px 0 10px}
+#vividGoalsPage .ga-skill-pill-list{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:11px}
+#vividGoalsPage .ga-skill-pill{
+  border:1px solid #dcd0e8!important;background:#fff!important;color:#624278!important;
+  padding:9px 13px!important;min-height:39px!important;border-radius:10px!important;
+  font-size:12px!important;font-weight:750!important;cursor:pointer!important;
+}
+#vividGoalsPage .ga-skill-pill:hover{border-color:#a985d0!important;background:#f2e8fa!important}
+#vividGoalsPage .ga-skill-pill.selected,
+#vividGoalsPage .ga-skill-pill[aria-pressed="true"]{
+  background:#603595!important;color:#fff!important;border-color:#603595!important;
+}
+#vividGoalsPage .ga-skill-pill:focus-visible{outline:3px solid #cba5eb;outline-offset:2px}
+#vividGoalsPage .ga-manual-form{padding-top:9px}
+#vividGoalsPage .ga-manual-fields{margin-top:0;align-items:flex-end}
+#vividGoalsPage .ga-session-list>div:has(.goals-proof-anchor){flex-wrap:wrap}
+#vividGoalsPage .ga-session-list>div>.goals-proof-anchor{flex-basis:100%;margin-left:0}
+@media(max-width:640px){
+ #vividGoalsPage .ga-skill-pill-list{gap:6px}
+ #vividGoalsPage .ga-skill-pill{font-size:11px!important;padding:9px 11px!important}
+ #vividGoalsPage .gp-upload-label{min-height:37px!important}
+}
