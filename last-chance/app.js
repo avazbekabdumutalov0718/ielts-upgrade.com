@@ -104,6 +104,15 @@ async function openProof(n){let arr=day().t[$('#ov').dataset.id]?.p||[],m=arr[+n
  if(!x){let r=await localFile('get',m.id);x=r?.blob}if(!x){$('#vw').textContent='Dalil topilmadi. Cloud Storage sozlamasini tekshiring.';return}
  let url=URL.createObjectURL(x),t=proofKind(m),el=$('#vw');el.replaceChildren();if(t==='file'){let a=document.createElement('a');a.href=url;a.download=m.name;a.textContent='Faylni yuklab olish';el.append(a);return}
  let obj=document.createElement(t==='html'?'iframe':t);if(t==='html')obj.setAttribute('sandbox','allow-scripts');if(t==='video')obj.controls=true;obj.src=url;obj.className='view';el.append(obj)}
+async function removeCloudProof(m){
+ if(!m||m.state!=='cloud'||!m.path||!uid||!cloud)return;
+ const session=await cloud.auth.getSession(),token=session.data?.session?.access_token;
+ if(!token)throw Error('Sessiya tugagan: qayta kiring.');
+ const cfg=window.VOCAB_SUPABASE;
+ const url=cfg.url+'/storage/v1/object/'+encodeURIComponent(m.bucket||legacyBucket)+'/'+m.path.split('/').map(encodeURIComponent).join('/');
+ const res=await fetch(url,{method:'DELETE',headers:{apikey:cfg.key,Authorization:'Bearer '+token}});
+ if(!res.ok)throw Error('Cloud faylni o‘chirish rad etildi ('+res.status+').');
+}
 function print(){let a=tasks(),days=last7(),d=day(),rows=days.map(t=>{let k=dateKey(t),x=S.days[k]||{},count=a.filter(y=>x.t?.[y.id]?.d).length;return '<tr><td>'+k+'</td><td>'+count+'/'+a.length+'</td><td>'+((x.min||0)/60).toFixed(1)+'</td><td>'+(x.dis||0)+'</td></tr>'}).join('');
  $('#prt').innerHTML='<h1>LAST CHANCE — haftalik hisobot</h1><table><thead><tr><th>Sana</th><th>Vazifa</th><th>Soat</th><th>Chalg‘ish</th></tr></thead><tbody>'+rows+'</tbody></table><h2>'+dateKey(current)+'</h2><table><thead><tr><th>✔</th><th>Vazifa</th><th>Reja</th><th>Fakt</th><th>Dalil</th></tr></thead><tbody>'+a.map(t=>{let x=d.t?.[t.id]||{};return '<tr><td>'+(x.d?'✔':'☐')+'</td><td>'+E(t.n)+'</td><td>'+(x.e||'')+'</td><td>'+(x.a||'')+'</td><td>'+(x.p?.length||0)+'</td></tr>'}).join('')+'</tbody></table>'}
 let audio=null,node=null;
@@ -119,7 +128,7 @@ const action={
  addtask(){let n=$('#nt').value.trim();if(!n)return;S.custom.push({id:'c'+Date.now(),n});save();refresh()},
  delcustom(v){if(!confirm('Vazifani o‘chirasizmi?'))return;S.custom=S.custom.filter(x=>x.id!==v);save();refresh()},
  proof(v){proof(v)},pick(){$('#fi')?.click()},close(){$('#ov').classList.remove('on');refresh()},open(v){openProof(v)},
- async delf(v){let id=$('#ov').dataset.id,p=day().t[id]?.p;if(!p)return;let f=p[+v];if(!f||!confirm('Dalil o‘chirilsinmi?'))return;p.splice(+v,1);await localFile('del',f.id);save();proof(id)},
+ async delf(v){let id=$('#ov').dataset.id,p=day().t[id]?.p;if(!p)return;let f=p[+v];if(!f||!confirm('Dalil o‘chirilsinmi?'))return;try{await removeCloudProof(f)}catch(e){setStatus('⚠ '+(e.message||e),true);return}p.splice(+v,1);await localFile('del',f.id);save();proof(id)},
  addrow(){qfilter='';S.rows.push({});save();mistakes()},delrow(v){S.rows.splice(+v,1);if(!S.rows.length)S.rows.push({});save();mistakes()},
  sortt(){S.rows.sort((a,b)=>norm(a.type).localeCompare(norm(b.type)));save();mistakes()},
  addmock(){let a=['#mr','#ml','#mw','#ms'].map(id=>parseFloat(($(id).value||'').replace(',','.')));if(a.some(x=>!Number.isFinite(x)||x<0||x>9||x*2!==Math.round(x*2))){alert('0 dan 9 gacha, 0.5 qadamdagi band kiriting.');return}let [r,l,w,s]=a;S.mocks.push({d:$('#md').value||dateKey(today()),r,l,w,s,o:Math.round((r+l+w+s)/2)/2});S.mocks.sort((a,b)=>a.d.localeCompare(b.d));save();['#mr','#ml','#mw','#ms'].forEach(id=>$(id).value='');mocks()},
