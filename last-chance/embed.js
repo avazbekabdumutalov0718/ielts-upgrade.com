@@ -21,7 +21,7 @@
     const frame=document.getElementById(frameId);
     if(frame&&frame.contentWindow===event.source){
       const h=Number(event.data.height);
-      if(Number.isFinite(h)&&h>0)frame.style.height=Math.max(700,Math.min(30000,h+20))+'px';
+      if(Number.isFinite(h)&&h>0)frame.style.height=Math.max(700,Math.min(30000,h))+'px';
     }
   });
   window.VividLastChance=Object.freeze({open:openLastChance});
