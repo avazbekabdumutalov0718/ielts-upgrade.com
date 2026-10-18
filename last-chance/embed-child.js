@@ -8,7 +8,8 @@
     if(queued)return;queued=true;
     requestAnimationFrame(()=>{
       queued=false;
-      const height=Math.max(document.body?.scrollHeight||0,document.documentElement.scrollHeight||0);
+      const main=document.querySelector('main');
+      const height=main?Math.ceil(main.getBoundingClientRect().bottom+window.scrollY+30):Math.ceil(document.body.getBoundingClientRect().bottom+window.scrollY);
       window.parent.postMessage({type:'vivid:last-chance:height',height},location.origin);
     });
   }
