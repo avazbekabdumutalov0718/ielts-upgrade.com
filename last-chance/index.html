@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101524">
+<title>LAST CHANCE — VIVID IELTS</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="../supabase-loader.js" defer></script>
+<script src="../supabase-config.js" defer></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<header class="hero">
+ <div class="parent-link"><a href="../index.html">← VIVID IELTS</a><span id="cloudStatus" role="status">Hisob tekshirilmoqda…</span><button class="ghost" type="button" data-a="sync">☁ Sinxronlash</button></div>
+ <nav class="quicklinks" aria-label="LAST CHANCE bo‘limlari">
+ <a href="#goals">Maqsad</a><a href="#today">Bugun</a><a href="#tasks">Vazifa</a><a href="#mist">Xatolar</a><a href="#mock">Mock</a><a href="#time">Vaqt</a><a href="#track">Kuzatuv</a><button class="ghost" data-a="print">PDF / Chop etish</button><button class="ghost" data-a="theme">Rejim</button>
+ </nav>
+ <div class="stamp">2027 NEW LIFE</div><h1>LAST <span>CHANCE</span></h1><p class="quote" id="quote"></p><div class="yr" id="yr"></div>
+</header>
+<main>
+ <section id="goals"><div class="g" id="goalc"></div></section>
+ <section id="today"><h2>Bugun</h2><div id="dash"></div></section>
+ <section id="tasks"><h2>Kunlik vazifalar</h2><div id="tasklist"></div></section>
+ <section id="mist"><h2>IELTS xatolar tahlili</h2><p class="sub">Barcha xatolaringizni saqlang va question type bo‘yicha saralang.</p>
+  <div class="nav"><label for="qf">Question type</label><select id="qf"></select><button class="ghost" data-a="sortt">Turi bo‘yicha tartiblash</button><span class="sub" id="qc"></span></div>
+  <div class="tw"><table><thead><tr><th>Passage</th><th>Question type</th><th>Reason for the mistake</th><th>Where was the evidence?</th><th>Paraphrases</th><th></th></tr></thead><tbody id="mb"></tbody></table></div>
+  <button class="btn" data-a="addrow">Qator qo‘shish</button>
+ </section>
+ <section id="mock"><h2>Mock natijalari</h2><div class="g">
+  <div class="card"><h3>Yangi natija</h3><div class="mf"><input type="date" id="md" aria-label="Mock sanasi"><input id="mr" placeholder="Reading" inputmode="decimal" aria-label="Reading"><input id="ml" placeholder="Listening" inputmode="decimal" aria-label="Listening"><input id="mw" placeholder="Writing" inputmode="decimal" aria-label="Writing"><input id="ms" placeholder="Speaking" inputmode="decimal" aria-label="Speaking"></div><button class="btn" data-a="addmock">Saqlash</button><div id="mlist"></div></div>
+  <div class="card"><h3>Band grafigi</h3><div id="mchart"></div></div>
+  <div class="card"><h3>Zaif tomonlar</h3><div id="weak"></div></div>
+  <div class="card"><h3>Sovg‘a</h3><p class="sub">IELTS maqsad ballga yetgan mockdan keyin ochiladi.</p><input id="rwi" placeholder="O‘zingizga sovg‘a..." data-i="reward"><div id="rwv" class="rwv"></div></div>
+ </div></section>
+ <section id="time"><h2>Vaqt boshqaruvi</h2><div class="g">
+  <div class="card"><h3>Pomodoro 25/5</h3><div class="big" id="pt">25:00</div><div id="pm" class="sub">Fokus</div><button class="btn" data-a="pstart">Boshlash / Pauza</button><button class="ghost" data-a="preset">Reset</button><button class="ghost" data-a="focus">Fokus rejimi</button></div>
+  <div class="card"><h3>Toshkent namoz vaqti</h3><div class="pr" id="pray">Yuklanmoqda...</div></div>
+  <div class="card wide"><h3>Kun jadvali</h3><div id="blocks"></div><button class="btn" data-a="addblk">Blok qo‘shish</button></div>
+ </div></section>
+ <section id="track"><h2>Kuzatuv</h2><div class="g">
+  <div class="card"><h3>Kalendar</h3><div id="cal"></div></div>
+  <div class="card"><h3>Haftalik soatlar</h3><div id="wh"></div><h3>Kayfiyat va energiya</h3><div id="wm"></div></div>
+  <div class="card wide"><h3>Haftalik hisobot</h3><div id="rep"></div></div>
+ </div></section>
+ <p class="footnote">LAST CHANCE — VIVID IELTS hisobingizga bog‘langan shaxsiy reja. Dalillar uchun maxfiy Supabase Storage ishlatiladi; agar Storage sozlanmagan bo‘lsa, ogohlantirish ko‘rsatiladi.</p>
+</main>
+<div class="ov" id="ov" role="dialog" aria-modal="true" aria-label="Vazifa dalillari"><div class="box" id="box"></div></div>
+<div class="ov focus" id="fo"><div><div class="big" id="ft">25:00</div><p id="fm" class="sub"></p><div><button class="btn" data-a="pstart">Boshlash / Pauza</button><button class="ghost" data-a="noise" data-v="rain">Yomg‘ir</button><button class="ghost" data-a="noise" data-v="white">Oq shovqin</button><button class="ghost" data-a="noise" data-v="off">Ovozsiz</button><button class="ghost" data-a="unfocus">Chiqish</button></div></div></div>
+<div id="prt"></div>
+</body></html>
