@@ -16,10 +16,10 @@ let S=defaults(),current=today(),mo=0,qfilter='',cloud=null,uid='',saveQueued=fa
 const stateKey='last_chance_v1',bucket='vivid-goals-proofs';
 function normalize(v){let b=defaults();if(v&&typeof v==='object')Object.assign(b,v);for(let k of ['custom','rows','mocks','blocks'])if(!Array.isArray(b[k]))b[k]=defaults()[k];if(!b.rows.length)b.rows=[{}];if(!b.days||typeof b.days!=='object')b.days={};b.goals=Object.assign({},defaults().goals,b.goals);b.timer=Object.assign({},defaults().timer,b.timer);return b}
 const storageKey=()=>stateKey+':'+(uid||'guest');
-function localRead(){try{return JSON.parse(localStorage.getItem(storageKey())||localStorage.getItem('lc')||'null')}catch(e){return null}}
+function localRead(){try{return JSON.parse(localStorage.getItem(storageKey())||(uid?'null':localStorage.getItem('lc'))||'null')}catch(e){return null}}
 function localWrite(){try{localStorage.setItem(storageKey(),JSON.stringify(S))}catch(e){setStatus('Qurilma xotirasi to‘ldi',true)}}
 function setStatus(message,error=false){let el=$('#cloudStatus');el.textContent=message;el.style.color=error?'var(--red)':'var(--ok)'}
-function save(){localWrite();saveQueued=true;setStatus(uid?'☁ Supabase saqlanmoqda…':'⚠ Login qiling — lokal saqlandi',!uid);clearTimeout(debounce);debounce=setTimeout(sync,650)}
+function save(){S._updatedAt=Date.now();localWrite();saveQueued=true;setStatus(uid?'☁ Supabase saqlanmoqda…':'⚠ Login qiling — lokal saqlandi',!uid);clearTimeout(debounce);debounce=setTimeout(sync,650)}
 async function sync(){if(busy||!saveQueued||!cloud||!uid)return;busy=true;saveQueued=false;let snapshot=JSON.parse(JSON.stringify(S));try{
  let check=await cloud.auth.getUser();if(check.error||check.data?.user?.id!==uid)throw Error('Sessiya tugagan');
  let r=await cloud.from('user_state').upsert({user_id:uid,key:stateKey,value:snapshot},{onConflict:'user_id,key'});if(r.error)throw r.error;
@@ -32,7 +32,7 @@ async function init(){try{
  let user=await cloud.auth.getUser();uid=user.data?.user?.id||'';
  if(!uid){S=normalize(localRead());render();setStatus('⚠ VIVID IELTS hisobiga kiring',true);return}
  let local=localRead();let r=await cloud.from('user_state').select('value').eq('user_id',uid).eq('key',stateKey).maybeSingle();if(r.error)throw r.error;
- S=normalize(r.data?.value||local);render();if(r.data?.value){localWrite();setStatus('✓ Supabase’dan yuklandi')}else save();
+ let server=r.data?.value,localNewer=server&&local&&Number(local._updatedAt||0)>Number(server._updatedAt||0);S=normalize(localNewer?local:(server||local));render();if(server&&!localNewer){localWrite();setStatus('✓ Supabase’dan yuklandi')}else save();
 }catch(e){S=normalize(localRead());render();setStatus('⚠ Cloud ishlamadi: '+(e.message||e),true)}}
 window.addEventListener('online',()=>{if(saveQueued)sync()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&saveQueued)sync()});
